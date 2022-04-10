@@ -1,4 +1,4 @@
-package sql_server
+package sql_service
 
 import (
 	"fmt"

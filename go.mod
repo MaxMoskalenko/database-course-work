@@ -13,3 +13,5 @@ require (
 	gorm.io/driver/mysql v1.3.3
 	gorm.io/gorm v1.23.4 // indirect
 )
+
+require github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
