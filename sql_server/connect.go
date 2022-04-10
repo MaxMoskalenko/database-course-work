@@ -24,7 +24,6 @@ func Connect() Database {
 	PASS := os.Getenv("MYSQL_DB_PASSWORD")
 	HOST := os.Getenv("MYSQL_DB_HOST")
 	PORT := os.Getenv("MYSQL_DB_PORT")
-	DBNAME := os.Getenv("MYSQL_DB_DATABASE")
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/", USER, PASS, HOST, PORT)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -33,9 +32,9 @@ func Connect() Database {
 		panic(err.Error())
 	}
 
-	db.Exec("CREATE DATABASE IF NOT EXISTS " + DBNAME + ";")
+	db.Exec("CREATE DATABASE IF NOT EXISTS commodity_market;")
 
-	db.Exec("USE " + DBNAME + ";")
+	db.Exec("USE commodity_market;")
 
 	return Database{db}
 }
