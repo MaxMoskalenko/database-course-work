@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"database/sql"
+
 	_ "github.com/go-sql-driver/mysql"
+
 	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 type Database struct {
-	gorm *gorm.DB
+	sql *sql.DB
 }
 
 func Connect() Database {
@@ -26,7 +27,7 @@ func Connect() Database {
 	PORT := os.Getenv("MYSQL_DB_PORT")
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/", USER, PASS, HOST, PORT)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := sql.Open("mysql", dsn)
 
 	if err != nil {
 		panic(err.Error())
