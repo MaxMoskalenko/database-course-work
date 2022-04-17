@@ -2,19 +2,18 @@ package auth_service
 
 import (
 	h "database-course-work/helpers"
-	sql_service "database-course-work/sql_service"
+	"database-course-work/sql_service"
 	"fmt"
 )
 
 func SignUp(
 	db *sql_service.Database,
-	exchanger_tag string,
 	user *h.User,
 ) string {
-	database := db.GetDatabaseByTag(exchanger_tag)
+	database := db.GetDatabaseByTag(user.ExchangerTag)
 
 	if len(database) == 0 {
-		fmt.Printf("⛔️ Database with a %s tag does not exist\n", exchanger_tag)
+		fmt.Printf("⛔️ Database with a %s tag does not exist\n", user.ExchangerTag)
 		return ""
 	}
 
@@ -84,10 +83,9 @@ func SignUpCompany(
 
 func SignIn(
 	db *sql_service.Database,
-	exchanger_tag string,
 	login *h.User,
 ) string {
-	database := db.GetDatabaseByTag(exchanger_tag)
+	database := db.GetDatabaseByTag(login.ExchangerTag)
 	login.Password = h.Hash(login.Password)
 
 	user := db.GetUserOnLogin(database, login)
@@ -96,6 +94,8 @@ func SignIn(
 		fmt.Printf("⛔️ Wrong credentials\n")
 		return ""
 	}
+
+	user.ExchangerTag = login.ExchangerTag
 
 	jwt, err := generateJWT(user)
 

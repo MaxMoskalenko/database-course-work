@@ -18,6 +18,7 @@ func generateJWT(user *h.User) (string, error) {
 
 	claims["authorized"] = true
 	claims["email"] = user.Email
+	claims["exch"] = user.ExchangerTag
 	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
@@ -47,7 +48,7 @@ func generateCompanyJWT(company *h.Company) (string, error) {
 	return tokenString, nil
 }
 
-func readJWT(unparsedToken string) (*h.User, error) {
+func ReadJWT(unparsedToken string) (*h.User, error) {
 	godotenv.Load()
 	var mySigningKey = []byte(os.Getenv("SIGN_KEY"))
 	token, err := jwt.Parse(unparsedToken, func(token *jwt.Token) (interface{}, error) {
@@ -58,18 +59,19 @@ func readJWT(unparsedToken string) (*h.User, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("⛔️ Your Token has been expired")
+		return nil, fmt.Errorf("⛔️ %s", err.Error())
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		var user h.User
+		user.ExchangerTag = fmt.Sprintf("%v", claims["exch"])
 		user.Email = fmt.Sprintf("%v", claims["email"])
 		return &user, nil
 	}
 	return nil, fmt.Errorf("⛔️ Something went wrong during token read")
 }
 
-func readCompanyJWT(unparsedToken string) (*h.Company, error) {
+func ReadCompanyJWT(unparsedToken string) (*h.Company, error) {
 	godotenv.Load()
 	var mySigningKey = []byte(os.Getenv("SIGN_KEY"))
 	token, err := jwt.Parse(unparsedToken, func(token *jwt.Token) (interface{}, error) {
@@ -80,7 +82,7 @@ func readCompanyJWT(unparsedToken string) (*h.Company, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("⛔️ Your Token has been expired")
+		return nil, fmt.Errorf("⛔️ %s", err.Error())
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {

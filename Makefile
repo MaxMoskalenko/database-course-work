@@ -9,6 +9,9 @@ launch-db:
 	-d mysql:5.7.37	
 
 export INPUT_MODE=api
+export JWT_USER_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJlbWFpbCI6ImdraEBtYWlsLnVhIiwiZXhjaCI6IktDRSIsImV4cCI6MTY1MDIxMjgyM30.OxIuS4XFfrgH6jLLhogfrjcYbYr1FOAC2gQ9CAPAVtI
+export JWT_COMPANY_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2NTAyMTMwNTcsInRhZyI6IlBFUiIsInR5cGUiOiJjIn0.88AszQcrIFLc3moiAhH7Pp_kTvLs41g0WUA7EaB1xCA
+export JWT_SHIPCOMAPNY_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2NTAyMTI4MjMsInRhZyI6Ik9NS0giLCJ0eXBlIjoicyJ9.tGdhgh--KQtz6XGOWwaebJrlmLNUDGtXdZ6wsj6elwE
 
 build:
 	go build main.go
@@ -31,18 +34,18 @@ create-company:
 create-shipment-company:
 	./main signup_shipcompany OMKH "Odesa-Mykolaiv-Kherson Monopoly" omkhpass
 
-get-user: export JWT_TOKEN=`./main signin_user KCE itusk@yahoo.eu password`
+add-commodity:
+	./main add_commodity KCE ocherry@mail.ua iron 200 ${JWT_COMPANY_TOKEN}
 
-get-user:
-	./main test ${JWT_TOKEN}
+init: init-market-db init-exchangers-db
 
-test-signup: create-users create-company create-shipment-company
+signup: create-users create-company create-shipment-company
 
-test-signin: 
+signin: 
 	./main signin_user KCE gkh@mail.ua topgetman123
 	./main signin_company PER paprikaa
 	./main signin_shipcompany OMKH omkhpass
 
 # start: build init-market-db init-exchangers-db create-users
-start: build test-signin
+start: build init signup signin
 
