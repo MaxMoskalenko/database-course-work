@@ -9,9 +9,9 @@ launch-db:
 	-d mysql:5.7.37	
 
 export INPUT_MODE=api
-export JWT_USER_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJlbWFpbCI6ImdraEBtYWlsLnVhIiwiZXhjaCI6IktDRSIsImV4cCI6MTY1MDIxMjgyM30.OxIuS4XFfrgH6jLLhogfrjcYbYr1FOAC2gQ9CAPAVtI
-export JWT_COMPANY_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2NTAyMTMwNTcsInRhZyI6IlBFUiIsInR5cGUiOiJjIn0.88AszQcrIFLc3moiAhH7Pp_kTvLs41g0WUA7EaB1xCA
-export JWT_SHIPCOMAPNY_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2NTAyMTI4MjMsInRhZyI6Ik9NS0giLCJ0eXBlIjoicyJ9.tGdhgh--KQtz6XGOWwaebJrlmLNUDGtXdZ6wsj6elwE
+export JWT_USER_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJlbWFpbCI6InNiZW5kZXJAbWFpbC51YSIsImV4Y2giOiJLQ0UiLCJleHAiOjE2NTA3OTcxNjF9.fEdZqi-bt4C5xIrT70Z-dsYWmutS-YBbC2572n4rItY
+export JWT_COMPANY_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2NTA3OTU5MDAsInRhZyI6IlBFUiIsInR5cGUiOiJjIn0.cipiQfjS3Pn-ybUR2UV9B04Noqt2bxqfQKyiiELT_D8
+export JWT_SHIPCOMAPNY_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3JpemVkIjp0cnVlLCJleHAiOjE2NTA3ODUzODksInRhZyI6Ik9NS0giLCJ0eXBlIjoicyJ9._g2AOyk-vrOcCgg3svFet2atE-NXcwMwwjypFkkzPko
 
 build:
 	go build main.go
@@ -35,17 +35,24 @@ create-shipment-company:
 	./main signup_shipcompany OMKH "Odesa-Mykolaiv-Kherson Monopoly" omkhpass
 
 add-commodity:
-	./main add_commodity KCE ocherry@mail.ua iron 200 ${JWT_COMPANY_TOKEN}
+	./main add_commodity KCE sbender@mail.ua iron 200 ${JWT_COMPANY_TOKEN}
+
+check-commodity:
+	./main check_commodity ${JWT_USER_TOKEN}
+
+check-all-commodity:
+	./main check_commodity_broker KCE ${JWT_USER_TOKEN}
 
 init: init-market-db init-exchangers-db
 
 signup: create-users create-company create-shipment-company
 
 signin: 
-	./main signin_user KCE gkh@mail.ua topgetman123
+	./main signin_user KCE sbender@mail.ua vashbatk0
 	./main signin_company PER paprikaa
 	./main signin_shipcompany OMKH omkhpass
 
 # start: build init-market-db init-exchangers-db create-users
-start: build init signup signin
+# start: build init signup signin
+start: build check-all-commodity
 

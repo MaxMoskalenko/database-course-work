@@ -28,4 +28,5 @@ type Commodity struct {
 	Volume int
 	Unit   string
 	Id     int
+	Owner  User
 }

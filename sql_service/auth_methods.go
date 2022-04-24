@@ -106,3 +106,27 @@ func (db *Database) GetCompanyOnLogin(table string, login *h.Company) *h.Company
 
 	return &company
 }
+
+func (db *Database) GetUserData(database string, email string) *h.User {
+	if !h.ValidDatabase(database) {
+		fmt.Println("🛠 Invalid table name")
+		return nil
+	}
+
+	var user h.User
+
+	sqlStatement := fmt.Sprintf(`
+		SELECT email, name, surname, is_broker
+		FROM %s.users
+		WHERE email=?;
+	`, database)
+
+	db.sql.QueryRow(
+		sqlStatement,
+		email,
+	).Scan(&user.Email, &user.Name, &user.Surname, &user.IsBroker)
+
+	user.ExchangerTag = db.GetTagByDatabase(database)
+
+	return &user
+}

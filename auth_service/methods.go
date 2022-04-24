@@ -138,3 +138,32 @@ func SignInCompany(
 
 	return jwt
 }
+
+func GetUser(
+	db *sql_service.Database,
+	jwt string,
+) *h.User {
+	user, err := ReadJWT(jwt)
+	if err != nil {
+		panic(err)
+	}
+
+	database := db.GetDatabaseByTag(user.ExchangerTag)
+
+	if len(database) == 0 {
+		panic(fmt.Errorf("⛔️ Database with a %s tag does not exist", user.ExchangerTag))
+	}
+
+	userData := db.GetUserData(database, user.Email)
+
+	if userData == nil {
+		panic(fmt.Errorf("⛔️ User does not exist"))
+	}
+
+	user.Name = userData.Name
+	user.Surname = userData.Surname
+	user.ExchangerTag = userData.ExchangerTag
+	user.IsBroker = userData.IsBroker
+
+	return user
+}

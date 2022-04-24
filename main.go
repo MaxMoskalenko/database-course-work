@@ -156,8 +156,27 @@ func main() {
 		)
 		return
 	}
+
 	// _ check_commodity ${user_jwt}
-	// _ check_commodity_broker ${exchanger_tag} ${user_email} ${broker_jwt}
+	if request == "check_commodity" {
+		commodities := ex_service.CheckCommodities(
+			&db,
+			os.Args[2],
+		)
+		h.PrintCommodities(commodities)
+		return
+	}
+
+	// _ check_commodity_broker ${exchanger_tag} ${broker_jwt}
+	if request == "check_commodity_broker" {
+		commodities := ex_service.CheckAllCommodities(
+			&db,
+			os.Args[2],
+			os.Args[3],
+		)
+		h.PrintCommodities(commodities)
+		return
+	}
 
 	if request == "test" {
 		fmt.Println("🛠 " + os.Args[2])

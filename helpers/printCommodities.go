@@ -1,0 +1,23 @@
+package helpers
+
+import (
+	"fmt"
+	"sort"
+)
+
+func PrintCommodities(commodities [](*Commodity)) {
+	sort.SliceStable(commodities, func(i, j int) bool {
+		return commodities[i].Owner.Email < commodities[j].Owner.Email
+	})
+	previousUser := ""
+	result := ""
+
+	for _, c := range commodities {
+		if c.Owner.Email != previousUser {
+			result += fmt.Sprintf("🥸  %s %s`s commodities on %s\n", c.Owner.Name, c.Owner.Surname, c.Owner.ExchangerTag)
+			previousUser = c.Owner.Email
+		}
+		result += fmt.Sprintf("📦 %d %s of %s\n", c.Volume, c.Unit, c.Label)
+	}
+	fmt.Print(result)
+}

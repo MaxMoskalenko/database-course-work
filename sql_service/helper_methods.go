@@ -23,6 +23,22 @@ func (db *Database) GetDatabaseByTag(tag string) string {
 	return dbName
 }
 
+func (db *Database) GetTagByDatabase(database string) string {
+	var tag string
+	sqlStatement := "SELECT tag FROM commodity_market.exchangers WHERE database_name=?;"
+
+	err := db.sql.QueryRow(
+		sqlStatement,
+		database,
+	).Scan(&tag)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return tag
+}
+
 func (db *Database) CheckIsRecordExist(database string, table string, column string, value string) bool {
 	if !h.ValidDatabase(database) {
 		fmt.Println("🛠 Invalid database name")
