@@ -19,7 +19,7 @@ func generateJWT(user *h.User) (string, error) {
 	claims["authorized"] = true
 	claims["email"] = user.Email
 	claims["exch"] = user.ExchangerTag
-	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
+	claims["exp"] = time.Now().Add(time.Hour * 2).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
 
@@ -38,7 +38,7 @@ func generateCompanyJWT(company *h.Company) (string, error) {
 	claims["authorized"] = true
 	claims["tag"] = company.Tag
 	claims["type"] = company.Type
-	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
+	claims["exp"] = time.Now().Add(time.Hour * 2).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
 

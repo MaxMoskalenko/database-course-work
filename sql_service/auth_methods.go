@@ -116,7 +116,7 @@ func (db *Database) GetUserData(database string, email string) *h.User {
 	var user h.User
 
 	sqlStatement := fmt.Sprintf(`
-		SELECT email, name, surname, is_broker
+		SELECT id, email, name, surname, is_broker
 		FROM %s.users
 		WHERE email=?;
 	`, database)
@@ -124,7 +124,7 @@ func (db *Database) GetUserData(database string, email string) *h.User {
 	db.sql.QueryRow(
 		sqlStatement,
 		email,
-	).Scan(&user.Email, &user.Name, &user.Surname, &user.IsBroker)
+	).Scan(&user.Id, &user.Email, &user.Name, &user.Surname, &user.IsBroker)
 
 	user.ExchangerTag = db.GetTagByDatabase(database)
 

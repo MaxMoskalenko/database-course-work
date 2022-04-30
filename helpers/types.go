@@ -1,6 +1,7 @@
 package helpers
 
 type User struct {
+	Id           int
 	Name         string
 	Surname      string
 	Email        string
@@ -28,5 +29,14 @@ type Commodity struct {
 	Volume int
 	Unit   string
 	Id     int
-	Owner  User
+	Owner  *User
+}
+
+type Order struct {
+	Id         int
+	Owner      *User
+	Side       string
+	State      string
+	Commodity  *Commodity
+	PrefBroker *User
 }

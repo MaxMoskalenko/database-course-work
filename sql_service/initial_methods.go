@@ -136,7 +136,7 @@ func (db *Database) InitExchange(ex *h.Exchanger) {
 	)
 	db.sql.Exec(`
 		CREATE TABLE IF NOT EXISTS brokers (
-			user_id INT PRIMARY KEY AUTO_INCREMENT,
+			user_id INT PRIMARY KEY,
 			license VARCHAR(25) NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id)
 		);`,
@@ -148,23 +148,26 @@ func (db *Database) InitExchange(ex *h.Exchanger) {
 			commodity_id INT NOT NULL,
 			volume INT NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id),
+			FOREIGN KEY (commodity_id) REFERENCES commodity_market.commodity_types(id),
 			PRIMARY KEY (user_id, commodity_id)
 		);`,
 	)
 
 	db.sql.Exec(`
-		CREATE TRIGGER checkCommodity 
-		BEFORE INSERT ON commodities
-		FOR EACH ROW
-		BEGIN
-			IF NOT EXISTS (
-				SELECT label FROM commodity_market.commodity_types CT
-				WHERE CT.id = NEW.commodity_id
-			)
-			THEN
-				SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Unknown commodity type";
-			END IF;
-		END;
+		CREATE TABLE IF NOT EXISTS orders (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			owner_id INT NOT NULL,
+			side ENUM ('buy', 'sell'),
+			state ENUM ('active', 'executed'),
+			commodity_id INT NOT NULL,
+			volume INT NOT NULL,
+			pref_broker_id INT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			update_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			FOREIGN KEY (owner_id) REFERENCES users(id),
+			FOREIGN KEY (pref_broker_id) REFERENCES brokers(user_id),
+			FOREIGN KEY (commodity_id) REFERENCES commodity_market.commodity_types(id)
+		)
 	`)
 
 	sqlStatement := "INSERT INTO commodity_market.exchangers (name, tag, database_name) VALUES (?, ?, ?);"

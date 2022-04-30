@@ -178,6 +178,88 @@ func main() {
 		return
 	}
 
+	// _ list_commodities
+	if request == "list_commodities" {
+		commodities := db.GetAvailableCommodities()
+		h.PrintCommoditiesList(commodities)
+		return
+	}
+
+	// _ add_order ${side} ${commodity_label} ${volume} ${preferable_broker_email} ${user_jwt}
+	if request == "add_order" {
+		volume, _ := strconv.Atoi(os.Args[4])
+		ex_service.AddOrder(
+			&db,
+			&h.Order{
+				Side: os.Args[2],
+				Commodity: &h.Commodity{
+					Label:  os.Args[3],
+					Volume: volume,
+				},
+				PrefBroker: &h.User{
+					Email: os.Args[5],
+				},
+			},
+			os.Args[6],
+		)
+		return
+	}
+
+	// _ list_orders ${isOpen} ${user_jwt}
+	if request == "list_orders" {
+		orders := ex_service.ReadOrders(
+			&db,
+			os.Args[2] == "true",
+			os.Args[3],
+		)
+		h.PrintPersonalOrders(orders)
+		return
+	}
+
+	// _ list_orders_all ${exchanger_tag} ${broker_jwt}
+	if request == "list_orders_all" {
+		orders := ex_service.ReadOrdersAll(
+			&db,
+			os.Args[2],
+			os.Args[3],
+		)
+		h.PrintAllOrders(orders)
+		return
+	}
+
+	// _ update_order ${order_id} ${side} ${commodity_label} ${volume} ${preferable_broker_email} ${user_jwt}
+	if request == "update_order" {
+		orderId, _ := strconv.Atoi(os.Args[2])
+		volume, _ := strconv.Atoi(os.Args[5])
+		ex_service.UpdateOrder(
+			&db,
+			orderId,
+			&h.Order{
+				Side: os.Args[3],
+				Commodity: &h.Commodity{
+					Label:  os.Args[4],
+					Volume: volume,
+				},
+				PrefBroker: &h.User{
+					Email: os.Args[6],
+				},
+			},
+			os.Args[7],
+		)
+		return
+	}
+
+	// _ delete_order ${order_id} ${user_jwt}
+	if request == "delete_order" {
+		orderId, _ := strconv.Atoi(os.Args[2])
+		ex_service.DeleteOrder(
+			&db,
+			orderId,
+			os.Args[3],
+		)
+		return
+	}
+
 	if request == "test" {
 		fmt.Println("🛠 " + os.Args[2])
 	}

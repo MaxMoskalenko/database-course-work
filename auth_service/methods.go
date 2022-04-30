@@ -160,6 +160,7 @@ func GetUser(
 		panic(fmt.Errorf("⛔️ User does not exist"))
 	}
 
+	user.Id = userData.Id
 	user.Name = userData.Name
 	user.Surname = userData.Surname
 	user.ExchangerTag = userData.ExchangerTag
