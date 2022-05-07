@@ -1,5 +1,7 @@
 package helpers
 
+import "time"
+
 type User struct {
 	Id           int
 	Name         string
@@ -12,6 +14,7 @@ type User struct {
 }
 
 type Company struct {
+	Id       int
 	Tag      string
 	Title    string
 	Password string
@@ -19,6 +22,7 @@ type Company struct {
 }
 
 type Exchanger struct {
+	Id           int
 	DatabaseName string
 	Name         string
 	Tag          string
@@ -39,4 +43,14 @@ type Order struct {
 	State      string
 	Commodity  *Commodity
 	PrefBroker *User
+}
+
+type Race struct {
+	Id          int
+	FromExch    *Exchanger
+	ToExch      *Exchanger
+	DateStamp   time.Time
+	DateValue   string
+	Commodities [](*Commodity)
+	Company     *Company
 }

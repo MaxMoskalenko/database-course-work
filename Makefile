@@ -22,12 +22,16 @@ init-market-db:
 	./main init
 
 init-exchangers-db:
+	./main init_exchange lviv_central_ex "Lviv Commodity Exchange" LCE
 	./main init_exchange kyiv_central_ex "Kyiv Commodity Exchange" KCE
+
 
 create-users:
 	./main signup_user KCE Goddamn Khmelnytskyi gkh@mail.ua topgetman123 false
 	./main signup_user KCE Ostap Cherry ocherry@mail.ua jokewriter4 false
 	./main signup_broker KCE Stephan Bender sbender@mail.ua vashbatk0 true "01234-itsli-cense-56789"
+	./main signup_user LCE Andrew Sheptytskiy ashept@mail.ua iNg0dwetrust false
+	./main signup_broker LCE Mykhailo Grushevskiy mgrusha@mail.ua 50hryvnas true "01234-lvivl-cense-56789"
 
 create-company:
 	./main signup_company PER "Paprika Journal" paprikaa
@@ -37,7 +41,9 @@ create-shipment-company:
 	./main signup_shipcompany OMKH "Odesa-Mykolaiv-Kherson Monopoly" omkhpass
 
 add-commodity:
-	./main add_commodity KCE sbender@mail.ua iron 200 ${JWT_COMPANY_TOKEN}
+	./main add_commodity KCE sbender@mail.ua iron 200 $(shell ./main signin_company PER paprikaa)
+	./main add_commodity LCE mgrusha@mail.ua silver 2 $(shell ./main signin_company PER paprikaa)
+	./main add_commodity LCE ashept@mail.ua cooper 1000 $(shell ./main signin_company PER paprikaa)
 
 check-commodity:
 	./main check_commodity ${JWT_USER_TOKEN}
@@ -64,13 +70,19 @@ add_order:
 	./main add_order buy iron 200 "" $(shell ./main signin_user KCE gkh@mail.ua topgetman123)
 	./main add_order sell gold 500 sbender@mail.ua $(shell ./main signin_user KCE gkh@mail.ua topgetman123)
 	./main add_order buy cooper 400 "" $(shell ./main signin_user KCE gkh@mail.ua topgetman123)
+	./main add_order buy iron 200 "" $(shell ./main signin_user LCE ashept@mail.ua iNg0dwetrust)
+	./main add_order sell gold 500 mgrusha@mail.ua $(shell ./main signin_user LCE mgrusha@mail.ua 50hryvnas)
+	./main add_order buy cooper 400 "" $(shell ./main signin_user LCE ashept@mail.ua iNg0dwetrust)
 
 list_orders:
 	./main list_orders true $(shell ./main signin_user KCE ocherry@mail.ua jokewriter4)
 	./main list_orders true $(shell ./main signin_user KCE gkh@mail.ua topgetman123)
 
-list_broker_orders:
-	./main list_orders_all KCE $(shell ./main signin_user KCE sbender@mail.ua vashbatk0)
+list_orders_native:
+	./main list_orders_native KCE $(shell ./main signin_user KCE sbender@mail.ua vashbatk0)
+
+list_orders_foreign:
+	./main list_orders_foreign $(shell ./main signin_user KCE sbender@mail.ua vashbatk0)
 
 update_order:
 	./main update_order 8 sell silver 100 "sbender@mail.ua" $(shell ./main signin_user KCE ocherry@mail.ua jokewriter4)
@@ -78,5 +90,19 @@ update_order:
 delete_order:
 	./main delete_order 10 $(shell ./main signin_user KCE ocherry@mail.ua jokewriter4)
 
-start: build delete_order
+create-race:
+	./main create_race KCE LCE "2022-06-12 12:04" $(shell ./main signin_shipcompany OMKH omkhpass)
+
+read-races:
+	./main read_races
+
+update-race:
+	./main update_race 1 LCE KCE "2023-06-12 12:04" $(shell ./main signin_shipcompany OMKH omkhpass)
+
+delete-race:
+	./main delete_race 1 $(shell ./main signin_shipcompany OMKH omkhpass)
+
+init: init-market-db init-exchangers-db create-users create-company add-commodity add_order
+
+start: build list_orders_foreign
 

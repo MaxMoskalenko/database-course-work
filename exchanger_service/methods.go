@@ -106,7 +106,7 @@ func ReadOrders(
 	return db.ReadOrders(database, user, isOpen)
 }
 
-func ReadOrdersAll(
+func ReadOrdersNative(
 	db *sql_service.Database,
 	exchangerTag string,
 	brokerJWT string,
@@ -118,7 +118,21 @@ func ReadOrdersAll(
 		panic(fmt.Errorf("⛔️ Broker is not a broker"))
 	}
 
-	return db.ReadOrdersAll(database, broker.Id)
+	return db.ReadOrdersNative(database, broker.Id)
+}
+
+func ReadOrdersForeign(
+	db *sql_service.Database,
+	brokerJWT string,
+) [](*h.Order) {
+	broker := auth_service.GetUser(db, brokerJWT)
+
+	if broker.IsBroker != 1 {
+		panic(fmt.Errorf("⛔️ Broker is not a broker"))
+	}
+
+	return db.ReadOrdersForeign()
+
 }
 
 func UpdateOrder(

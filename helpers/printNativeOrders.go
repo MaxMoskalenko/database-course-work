@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func PrintAllOrders(orders [](*Order)) {
+func PrintNativeOrders(orders [](*Order)) {
 	result := ""
 
 	for _, o := range orders {

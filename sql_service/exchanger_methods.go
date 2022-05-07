@@ -289,7 +289,7 @@ func (db *Database) ReadOrders(database string, user *h.User, isOpen bool) [](*h
 	return orders
 }
 
-func (db *Database) ReadOrdersAll(database string, brokerId int) [](*h.Order) {
+func (db *Database) ReadOrdersNative(database string, brokerId int) [](*h.Order) {
 	if !h.ValidDatabase(database) {
 		panic(fmt.Errorf("🛠 Invalid database name"))
 	}
@@ -355,6 +355,46 @@ func (db *Database) ReadOrdersAll(database string, brokerId int) [](*h.Order) {
 		order.Owner = &user
 		order.Commodity = &commodity
 		order.PrefBroker = &broker
+		orders = append(orders, &order)
+	}
+
+	return orders
+}
+
+func (db *Database) ReadOrdersForeign() [](*h.Order) {
+	sqlStatement := `
+		CALL commodity_market.GetForeignOrders();
+	`
+
+	rows, err := db.sql.Query(sqlStatement)
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	defer rows.Close()
+
+	var orders [](*h.Order)
+
+	for rows.Next() {
+		order := h.Order{
+			Owner:     &h.User{},
+			Commodity: &h.Commodity{},
+		}
+
+		if err := rows.Scan(
+			&order.Id,
+			&order.Side,
+			&order.State,
+			&order.Commodity.Label,
+			&order.Commodity.Unit,
+			&order.Commodity.Volume,
+			&order.Owner.Name,
+			&order.Owner.Surname,
+			&order.Owner.Email,
+			&order.Owner.ExchangerTag,
+		); err != nil {
+			panic(err)
+		}
 		orders = append(orders, &order)
 	}
 

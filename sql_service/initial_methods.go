@@ -16,7 +16,7 @@ func (db *Database) InitCommodityMarket() {
 		CREATE TABLE IF NOT EXISTS commodity_companies (
 			id INT PRIMARY KEY AUTO_INCREMENT,
 			title VARCHAR (255) NOT NULL,
-			tag VARCHAR (16) NOT NULL,
+			tag VARCHAR (255) NOT NULL,
 			password VARCHAR (255) NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE (tag)
@@ -27,7 +27,7 @@ func (db *Database) InitCommodityMarket() {
 		CREATE TABLE IF NOT EXISTS shipment_companies (
 			id INT PRIMARY KEY AUTO_INCREMENT,
 			title VARCHAR (255) NOT NULL,
-			tag VARCHAR (16) NOT NULL,
+			tag VARCHAR (255) NOT NULL,
 			password VARCHAR (255) NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE (tag)
@@ -38,7 +38,7 @@ func (db *Database) InitCommodityMarket() {
 		CREATE TABLE IF NOT EXISTS exchangers (
 			id INT PRIMARY KEY AUTO_INCREMENT,
 			name VARCHAR (255) NOT NULL,
-			tag VARCHAR (16) NOT NULL,
+			tag VARCHAR (255) NOT NULL,
 			database_name VARCHAR (255) NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE (tag, database_name)
@@ -73,6 +73,70 @@ func (db *Database) InitCommodityMarket() {
 		"./data/commodity_types",
 		"INSERT IGNORE INTO commodity_market.commodity_types (label, unit_id) VALUES (?, ?);",
 	)
+
+	db.sql.Exec(`
+		CREATE TABLE IF NOT EXISTS commodity_market.races (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			from_id INT NOT NULL,
+			to_id INT NOT NULL,
+			race_date TIMESTAMP NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			update_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			FOREIGN KEY (from_id) REFERENCES exchangers(id),
+			FOREIGN KEY (to_id) REFERENCES exchangers(id)
+		);
+	`)
+
+	db.sql.Exec(`
+		CREATE TRIGGER checkCorrectRaceRoute 
+		BEFORE INSERT ON commodity_market.races
+		FOR EACH ROW
+		BEGIN
+			IF NEW.from_id = NEW.to_id
+			THEN
+				SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = "Start and finish points of race are the same";
+			END IF;
+		END;
+	`)
+
+	db.sql.Exec(`
+		CREATE PROCEDURE GetForeignOrders()
+		BEGIN
+		DECLARE isDone INT;
+		DECLARE databaseName VARCHAR(255); 
+		DECLARE exchTag VARCHAR(255);
+		
+		DECLARE ExchangerCursor CURSOR FOR SELECT database_name, tag FROM commodity_market.exchangers;
+		DECLARE CONTINUE HANDLER FOR NOT FOUND SET isDone = 1;
+		OPEN ExchangerCursor;
+		
+		SET @globalQuery := 'SELECT * FROM (';
+		SET isDone = 0;
+		REPEAT
+			FETCH ExchangerCursor INTO databaseName, exchTag;
+		
+			SET @globalQuery := CONCAT(
+				@globalQuery,
+				' SELECT  O.id, O.side, O.state, CT.label, CU.unit, O.volume, U.name as user_name, U.surname as user_surname, U.email, \'',
+				exchTag,
+				'\' AS tag FROM ',
+				databaseName,
+				'.orders AS O ',
+				'JOIN (SELECT id, label, unit_id FROM commodity_market.commodity_types) AS CT ON CT.id = O.commodity_id ',
+				'JOIN (SELECT id, unit FROM commodity_market.units) AS CU ON CU.id = CT.unit_id ',
+				'JOIN (SELECT id, name, surname, email FROM kyiv_central_ex.users) AS U ON U.id = O.owner_id ',
+				'WHERE O.pref_broker_id IS NULL UNION'
+			);
+		UNTIL isDone END REPEAT;
+		
+		CLOSE ExchangerCursor;
+		
+		SET @globalQuery := CONCAT(@globalQuery, ' SELECT NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL ) as G WHERE state = \'active\';');
+		PREPARE stat FROM @globalQuery;
+		EXECUTE stat;
+		DEALLOCATE PREPARE stat;
+		END
+	`)
 }
 
 func (db *Database) fillFromFile(table string, path string, sqlStatement string) {
@@ -146,7 +210,7 @@ func (db *Database) InitExchange(ex *h.Exchanger) {
 		CREATE TABLE IF NOT EXISTS commodities (
 			user_id INT NOT NULL,
 			commodity_id INT NOT NULL,
-			volume INT NOT NULL,
+			volume FLOAT NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id),
 			FOREIGN KEY (commodity_id) REFERENCES commodity_market.commodity_types(id),
 			PRIMARY KEY (user_id, commodity_id)
@@ -160,7 +224,7 @@ func (db *Database) InitExchange(ex *h.Exchanger) {
 			side ENUM ('buy', 'sell'),
 			state ENUM ('active', 'executed'),
 			commodity_id INT NOT NULL,
-			volume INT NOT NULL,
+			volume FLOAT NOT NULL,
 			pref_broker_id INT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			update_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

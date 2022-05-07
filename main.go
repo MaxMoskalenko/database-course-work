@@ -4,6 +4,7 @@ import (
 	"database-course-work/auth_service"
 	ex_service "database-course-work/exchanger_service"
 	h "database-course-work/helpers"
+	sh_service "database-course-work/shipment_service"
 	"database-course-work/sql_service"
 	"fmt"
 	"os"
@@ -216,14 +217,24 @@ func main() {
 		return
 	}
 
-	// _ list_orders_all ${exchanger_tag} ${broker_jwt}
-	if request == "list_orders_all" {
-		orders := ex_service.ReadOrdersAll(
+	// _ list_orders_native ${exchanger_tag} ${broker_jwt}
+	if request == "list_orders_native" {
+		orders := ex_service.ReadOrdersNative(
 			&db,
 			os.Args[2],
 			os.Args[3],
 		)
-		h.PrintAllOrders(orders)
+		h.PrintNativeOrders(orders)
+		return
+	}
+
+	// _ list_orders_foreign ${broker_jwt}
+	if request == "list_orders_foreign" {
+		orders := ex_service.ReadOrdersForeign(
+			&db,
+			os.Args[2],
+		)
+		h.PrintForeignOrders(orders)
 		return
 	}
 
@@ -255,6 +266,62 @@ func main() {
 		ex_service.DeleteOrder(
 			&db,
 			orderId,
+			os.Args[3],
+		)
+		return
+	}
+
+	// _ create_race ${from_exch} ${to_exch} ${date_of_race} ${shipment_company_jwt}
+	if request == "create_race" {
+		sh_service.CreateRace(
+			&db,
+			&h.Race{
+				FromExch: &h.Exchanger{
+					Tag: os.Args[2],
+				},
+				ToExch: &h.Exchanger{
+					Tag: os.Args[3],
+				},
+				DateValue: os.Args[4],
+			},
+			os.Args[5],
+		)
+		return
+	}
+
+	// _ read_races
+	if request == "read_races" {
+		races := sh_service.ReadRaces(&db)
+		h.PrintRaces(races)
+		return
+	}
+
+	// _ update_race ${race_id} ${from_exch} ${to_exch} ${date_of_race} ${shipment_company_jwt}
+	if request == "update_race" {
+		raceId, _ := strconv.Atoi(os.Args[2])
+		sh_service.UpdateRace(
+			&db,
+			raceId,
+			&h.Race{
+				FromExch: &h.Exchanger{
+					Tag: os.Args[3],
+				},
+				ToExch: &h.Exchanger{
+					Tag: os.Args[4],
+				},
+				DateValue: os.Args[5],
+			},
+			os.Args[6],
+		)
+		return
+	}
+
+	// _ delete_race ${race_id} ${shipment_company_jwt}
+	if request == "delete_race" {
+		raceId, _ := strconv.Atoi(os.Args[2])
+		sh_service.DeleteRace(
+			&db,
+			raceId,
 			os.Args[3],
 		)
 		return
