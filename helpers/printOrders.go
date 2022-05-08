@@ -14,7 +14,7 @@ func PrintPersonalOrders(orders [](*Order)) {
 		}
 
 		result += fmt.Sprintf(
-			"💼 %d. %s %d %s of %s (%s) %s\n",
+			"💼 %d. %s %f %s of %s (%s) %s\n",
 			o.Id,
 			o.Side,
 			o.Commodity.Volume,

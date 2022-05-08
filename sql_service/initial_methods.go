@@ -80,6 +80,8 @@ func (db *Database) InitCommodityMarket() {
 			from_id INT NOT NULL,
 			to_id INT NOT NULL,
 			race_date TIMESTAMP NOT NULL,
+			company_id INT NOT NULL,
+			status ENUM ('preparing', 'arrive', 'permanent') DEFAULT 'preparing',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			update_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			FOREIGN KEY (from_id) REFERENCES exchangers(id),
@@ -225,12 +227,26 @@ func (db *Database) InitExchange(ex *h.Exchanger) {
 			state ENUM ('active', 'executed'),
 			commodity_id INT NOT NULL,
 			volume FLOAT NOT NULL,
+			executed_volume FLOAT NOT NULL DEFAULT 0,
 			pref_broker_id INT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			update_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			FOREIGN KEY (owner_id) REFERENCES users(id),
 			FOREIGN KEY (pref_broker_id) REFERENCES brokers(user_id),
 			FOREIGN KEY (commodity_id) REFERENCES commodity_market.commodity_types(id)
+		)
+	`)
+
+	db.sql.Exec(`
+		CREATE TABLE IF NOT EXISTS expected_cargo (
+			race_id INT NOT NULL,
+			user_id INT NOT NULL,
+			commodity_id INT NOT NULL,
+			volume FLOAT NOT NULL,
+			FOREIGN KEY (race_id) REFERENCES commodity_market.races(id),
+			FOREIGN KEY (commodity_id) REFERENCES commodity_market.commodity_types(id),
+			FOREIGN KEY (user_id) REFERENCES users(id),
+			PRIMARY KEY (race_id, user_id, commodity_id)
 		)
 	`)
 

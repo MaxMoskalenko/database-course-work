@@ -38,7 +38,7 @@ create-company:
 	./main signup_company GET "TOV Getmanchyna" topgetman
 
 create-shipment-company:
-	./main signup_shipcompany OMKH "Odesa-Mykolaiv-Kherson Monopoly" omkhpass
+	./main signup_shipcompany NNP "Nova Nova Poshta" newnewnew
 
 add-commodity:
 	./main add_commodity KCE sbender@mail.ua iron 200 $(shell ./main signin_company PER paprikaa)
@@ -58,7 +58,7 @@ signup: create-users create-company create-shipment-company
 signin: 
 	./main signin_user KCE sbender@mail.ua vashbatk0
 	./main signin_company PER paprikaa
-	./main signin_shipcompany OMKH omkhpass
+	./main signin_shipcompany NNP newnewnew
 
 list_commodities:
 	./main list_commodities
@@ -91,18 +91,27 @@ delete_order:
 	./main delete_order 10 $(shell ./main signin_user KCE ocherry@mail.ua jokewriter4)
 
 create-race:
-	./main create_race KCE LCE "2022-06-12 12:04" $(shell ./main signin_shipcompany OMKH omkhpass)
+	./main create_race KCE LCE "2022-06-12 12:04" $(shell ./main signin_shipcompany NNP newnewnew)
 
 read-races:
 	./main read_races
 
 update-race:
-	./main update_race 1 LCE KCE "2023-06-12 12:04" $(shell ./main signin_shipcompany OMKH omkhpass)
+	./main update_race 1 LCE KCE "2023-06-12 12:04" $(shell ./main signin_shipcompany NNP newnewnew)
 
 delete-race:
-	./main delete_race 1 $(shell ./main signin_shipcompany OMKH omkhpass)
+	./main delete_race 1 $(shell ./main signin_shipcompany NNP newnewnew)
+
+finish-race:
+	./main finish_race 1 $(shell ./main signin_shipcompany NNP newnewnew)
+
+execute-native:
+	./main execute_order 1 4 1 $(shell ./main signin_user KCE sbender@mail.ua vashbatk0)
+
+execute-foreign:
+	./main execute_foreign_order KCE 1 LCE 1 1 15 $(shell ./main signin_user KCE sbender@mail.ua vashbatk0)
 
 init: init-market-db init-exchangers-db create-users create-company add-commodity add_order
 
-start: build list_orders_foreign
+start: build finish-race
 

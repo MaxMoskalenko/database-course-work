@@ -17,7 +17,7 @@ func PrintCommodities(commodities [](*Commodity)) {
 			result += fmt.Sprintf("🥸  %s %s`s commodities on %s\n", c.Owner.Name, c.Owner.Surname, c.Owner.ExchangerTag)
 			previousUser = c.Owner.Email
 		}
-		result += fmt.Sprintf("📦 %d %s of %s\n", c.Volume, c.Unit, c.Label)
+		result += fmt.Sprintf("📦 %f %s of %s\n", c.Volume, c.Unit, c.Label)
 	}
 	fmt.Print(result)
 }

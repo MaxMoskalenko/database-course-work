@@ -18,7 +18,7 @@ func PrintNativeOrders(orders [](*Order)) {
 		}
 
 		result += fmt.Sprintf(
-			"💼%s %d. Owner: %s %s (%s)\n\t%s %d %s of %s (%s)\n",
+			"💼%s %d. Owner: %s %s (%s) %s %f %s of %s (%s)\n",
 			isPref,
 			o.Id,
 			o.Owner.Name,

@@ -471,3 +471,102 @@ func (db *Database) DeleteOrder(database string, orderId int) {
 		panic(err)
 	}
 }
+
+func (db *Database) GetOrderById(database string, orderId int, prefBrokerId int) *h.Order {
+	if !h.ValidDatabase(database) {
+		panic(fmt.Errorf("🛠 Invalid database name"))
+	}
+
+	sqlStatement := fmt.Sprintf(`
+		SELECT id, side, commodity_id, volume, owner_id
+		FROM %s.orders
+		WHERE 
+			(pref_broker_id=? OR pref_broker_id IS NULL) AND 
+			state='active' AND 
+			id=?;
+	`, database)
+
+	order := h.Order{
+		Owner:      &h.User{},
+		Commodity:  &h.Commodity{},
+		PrefBroker: &h.User{},
+	}
+
+	err := db.sql.QueryRow(
+		sqlStatement,
+		prefBrokerId,
+		orderId,
+	).Scan(
+		&order.Id,
+		&order.Side,
+		&order.Commodity.Id,
+		&order.Commodity.Volume,
+		&order.Owner.Id,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &order
+}
+
+func (db *Database) PerformNativeExchange(
+	database string,
+	sellOrder *h.Order,
+	buyOrder *h.Order,
+	volumeChange float64,
+) {
+	if !h.ValidDatabase(database) {
+		panic(fmt.Errorf("🛠 Invalid database name"))
+	}
+
+	tx, err := db.sql.Begin()
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	updateTransactionOrder(tx, database, sellOrder)
+	updateTransactionOrder(tx, database, buyOrder)
+	upsertTransactionCommodities(tx, database, sellOrder.Owner.Id, sellOrder.Commodity.Id, -volumeChange)
+	upsertTransactionCommodities(tx, database, buyOrder.Owner.Id, buyOrder.Commodity.Id, volumeChange)
+
+	err = tx.Commit()
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (db *Database) PerformForeignExchange(
+	sellDatabase string,
+	buyDatabase string,
+	sellOrder *h.Order,
+	buyOrder *h.Order,
+	raceId int,
+	volumeChange float64,
+) {
+	if !h.ValidDatabase(sellDatabase) || !h.ValidDatabase(buyDatabase) {
+		panic(fmt.Errorf("🛠 Invalid database name"))
+	}
+
+	tx, err := db.sql.Begin()
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	updateTransactionOrder(tx, sellDatabase, sellOrder)
+	updateTransactionOrder(tx, buyDatabase, buyOrder)
+	upsertTransactionCommodities(tx, sellDatabase, sellOrder.Owner.Id, sellOrder.Commodity.Id, -volumeChange)
+	upsertTransactionCargo(tx, buyDatabase, raceId, buyOrder.Commodity.Id, buyOrder.Owner.Id, volumeChange)
+
+	err = tx.Commit()
+
+	if err != nil {
+		panic(err)
+	}
+}

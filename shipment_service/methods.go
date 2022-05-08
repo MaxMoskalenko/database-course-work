@@ -100,3 +100,36 @@ func DeleteRace(
 
 	db.DeleteRace(id)
 }
+
+func FinishRace(
+	db *sql_service.Database,
+	raceId int,
+	companyJWT string,
+) {
+	company, err := auth_service.ReadCompanyJWT(companyJWT)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if company.Type != "s" || !db.CheckIsRecordExist("commodity_market", "shipment_companies", "tag", company.Tag) {
+		panic(fmt.Errorf("⛔️ This shipment company doesn`t exist"))
+	}
+
+	if db.GetCompanyTag(raceId) != company.Tag {
+		panic(fmt.Errorf("⛔️ Race is not owned by company"))
+	}
+
+	race := db.GetRaceById(raceId)
+	database := db.GetDatabaseByTag(race.ToExch.Tag)
+
+	if len(database) == 0 {
+		panic(fmt.Errorf("⛔️ Database with a %s tag does not exist", race.ToExch.Tag))
+	}
+
+	if race.Status == "arrive" {
+		panic(fmt.Errorf("⛔️ This race has already arrived"))
+	}
+
+	db.FinishRace(database, raceId)
+}

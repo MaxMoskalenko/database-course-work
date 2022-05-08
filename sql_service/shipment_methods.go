@@ -2,6 +2,7 @@ package sql_service
 
 import (
 	h "database-course-work/helpers"
+	"fmt"
 )
 
 func (db *Database) InsertRace(race *h.Race) {
@@ -181,6 +182,110 @@ func (db *Database) DeleteRace(id int) {
 		sqlStatement,
 		id,
 	).Err()
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (db *Database) GetRaceById(id int) *h.Race {
+	sqlStatement := `
+		SELECT R.id AS race_id, E1.tag AS from_tag, E2.tag AS to_tag, R.status
+		FROM commodity_market.races R 
+		JOIN commodity_market.exchangers E1
+			ON R.from_id = E1.id
+		JOIN commodity_market.exchangers E2
+			ON R.to_id = E2.id
+		WHERE R.id = ?;
+	`
+
+	race := &h.Race{
+		FromExch: &h.Exchanger{},
+		ToExch:   &h.Exchanger{},
+	}
+
+	err := db.sql.QueryRow(
+		sqlStatement,
+		id,
+	).Scan(
+		&race.Id,
+		&race.FromExch.Tag,
+		&race.ToExch.Tag,
+		&race.Status,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return race
+}
+
+func (db *Database) FinishRace(database string, raceId int) {
+	if !h.ValidDatabase(database) {
+		panic(fmt.Errorf("🛠 Invalid database name"))
+	}
+
+	tx, err := db.sql.Begin()
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	sqlStatement := fmt.Sprintf(`
+		SELECT user_id, commodity_id, volume
+		FROM %s.expected_cargo
+		WHERE race_id = ?;
+	`, database)
+
+	rows, err := tx.Query(
+		sqlStatement,
+		raceId,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	var commodities [](*h.Commodity)
+
+	for rows.Next() {
+		commodity := h.Commodity{
+			Owner: &h.User{},
+		}
+		if err := rows.Scan(
+			&commodity.Owner.Id,
+			&commodity.Id,
+			&commodity.Volume,
+		); err != nil {
+			tx.Rollback()
+			panic(err)
+		}
+
+		commodities = append(commodities, &commodity)
+	}
+	rows.Close()
+
+	for _, commodity := range commodities {
+		upsertTransactionCommodities(tx, database, commodity.Owner.Id, commodity.Id, commodity.Volume)
+		upsertTransactionCargo(tx, database, raceId, commodity.Id, commodity.Owner.Id, -commodity.Volume)
+	}
+
+	sqlStatement = `
+		UPDATE commodity_market.races
+		SET status = IF(status = 'preparing', 'arrive', status)
+		WHERE id = ?
+	`
+
+	err = tx.QueryRow(sqlStatement, raceId).Err()
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	err = tx.Commit()
 
 	if err != nil {
 		panic(err)

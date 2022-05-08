@@ -30,7 +30,7 @@ type Exchanger struct {
 
 type Commodity struct {
 	Label  string
-	Volume int
+	Volume float64
 	Unit   string
 	Id     int
 	Owner  *User
@@ -43,6 +43,7 @@ type Order struct {
 	State      string
 	Commodity  *Commodity
 	PrefBroker *User
+	Exchnager  *Exchanger
 }
 
 type Race struct {
@@ -53,4 +54,5 @@ type Race struct {
 	DateValue   string
 	Commodities [](*Commodity)
 	Company     *Company
+	Status      string
 }

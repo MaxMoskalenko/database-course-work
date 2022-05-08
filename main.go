@@ -142,7 +142,7 @@ func main() {
 
 	// _ add_commodity ${exchanger_tag} ${user_email} ${commodity_label} ${volume} ${company_jwt}
 	if request == "add_commodity" {
-		volume, _ := strconv.Atoi(os.Args[5])
+		volume, _ := strconv.ParseFloat(os.Args[5], 64)
 		ex_service.AddCommodity(
 			&db,
 			&h.User{
@@ -188,7 +188,7 @@ func main() {
 
 	// _ add_order ${side} ${commodity_label} ${volume} ${preferable_broker_email} ${user_jwt}
 	if request == "add_order" {
-		volume, _ := strconv.Atoi(os.Args[4])
+		volume, _ := strconv.ParseFloat(os.Args[4], 64)
 		ex_service.AddOrder(
 			&db,
 			&h.Order{
@@ -241,7 +241,7 @@ func main() {
 	// _ update_order ${order_id} ${side} ${commodity_label} ${volume} ${preferable_broker_email} ${user_jwt}
 	if request == "update_order" {
 		orderId, _ := strconv.Atoi(os.Args[2])
-		volume, _ := strconv.Atoi(os.Args[5])
+		volume, _ := strconv.ParseFloat(os.Args[5], 64)
 		ex_service.UpdateOrder(
 			&db,
 			orderId,
@@ -323,6 +323,59 @@ func main() {
 			&db,
 			raceId,
 			os.Args[3],
+		)
+		return
+	}
+
+	// _ finish_race ${race_id} ${shipment_company_jwt}
+	if request == "finish_race" {
+		raceId, _ := strconv.Atoi(os.Args[2])
+		sh_service.FinishRace(
+			&db,
+			raceId,
+			os.Args[3],
+		)
+		return
+	}
+
+	// _ execute_order ${first_order_id} ${second_order_id} ${volume} ${broker_jwt}
+	if request == "execute_order" {
+		firstOrderId, _ := strconv.Atoi(os.Args[2])
+		secondOrderId, _ := strconv.Atoi(os.Args[3])
+		volume, _ := strconv.ParseFloat(os.Args[4], 32)
+		ex_service.ExecuteNativeOrder(
+			&db,
+			firstOrderId,
+			secondOrderId,
+			volume,
+			os.Args[5],
+		)
+		return
+	}
+
+	// _ execute_foreign_order ${first_order_exchange_tag} ${first_order_id} ${second_order_exchange_tag} ${second_order_id} ${race_id} ${volume} ${broker_jwt}
+	if request == "execute_foreign_order" {
+		firstOrderId, _ := strconv.Atoi(os.Args[3])
+		secondOrderId, _ := strconv.Atoi(os.Args[5])
+		raceId, _ := strconv.Atoi(os.Args[6])
+		volume, _ := strconv.ParseFloat(os.Args[7], 32)
+		ex_service.ExecuteForeignOrder(
+			&db,
+			&h.Order{
+				Id: firstOrderId,
+				Exchnager: &h.Exchanger{
+					Tag: os.Args[2],
+				},
+			},
+			&h.Order{
+				Id: secondOrderId,
+				Exchnager: &h.Exchanger{
+					Tag: os.Args[4],
+				},
+			},
+			raceId,
+			volume,
+			os.Args[8],
 		)
 		return
 	}
