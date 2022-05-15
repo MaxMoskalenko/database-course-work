@@ -11,6 +11,13 @@ func ValidPassword(password string) bool {
 	return matched
 }
 
+func ValidBankAccount(bankAccount string) bool {
+	bankAccountRegExp := "^[0-9]{16}$"
+	matched, _ := regexp.MatchString(bankAccountRegExp, bankAccount)
+
+	return matched
+}
+
 func ValidEmail(email string) bool {
 	emailRegExp := "^[a-zA-Z0-9.]+@[a-zA-Z0-9.]+\\.[a-zA-Z0-9]+$"
 	matched, _ := regexp.MatchString(emailRegExp, email)

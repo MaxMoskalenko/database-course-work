@@ -3,22 +3,29 @@ package helpers
 import "time"
 
 type User struct {
-	Id           int
-	Name         string
-	Surname      string
-	Email        string
-	Password     string
-	IsBroker     uint8
-	License      string
-	ExchangerTag string
+	Id          int
+	Name        string
+	Surname     string
+	Email       string
+	BankAccount string
+	Password    string
+	IsBroker    bool
+	License     *License
+}
+
+type License struct {
+	Id      int
+	Code    string
+	IsTaken bool
 }
 
 type Company struct {
-	Id       int
-	Tag      string
-	Title    string
-	Password string
-	Type     string
+	Id          int
+	Tag         string
+	Title       string
+	Email       string
+	PhoneNumber string
+	Password    string
 }
 
 type Exchanger struct {

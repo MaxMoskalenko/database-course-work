@@ -20,29 +20,22 @@ func AddCommodity(
 		return
 	}
 
-	database := db.GetDatabaseByTag(user.ExchangerTag)
-
-	if len(database) == 0 {
-		fmt.Printf("⛔️ Database with a %s tag does not exist\n", user.ExchangerTag)
-		return
-	}
-
-	if !db.CheckIsRecordExist("commodity_market", h.GetTableFromType(company.Type), "tag", company.Tag) {
+	if !db.CheckIsRecordExist("companies", "tag", company.Tag) {
 		fmt.Printf("⛔️ No such company %s\n", company.Tag)
 		return
 	}
 
-	if !db.CheckIsRecordExist("commodity_market", "commodity_types", "label", commodity.Label) {
+	if !db.CheckIsRecordExist("commodity_types", "label", commodity.Label) {
 		fmt.Printf("⛔️ No such commodity type %s\n", commodity.Label)
 		return
 	}
 
-	if !db.CheckIsRecordExist(database, "users", "email", user.Email) {
+	if !db.CheckIsRecordExist("users", "email", user.Email) {
 		fmt.Printf("⛔️ No such user %s \n", user.Email)
 		return
 	}
 
-	db.AddCommodity(database, user.Email, commodity)
+	db.AddCommodity(user.Email, commodity)
 
 }
 
@@ -52,24 +45,7 @@ func CheckCommodities(
 ) [](*h.Commodity) {
 	user := auth_service.GetUser(db, userJWT)
 
-	database := db.GetDatabaseByTag(user.ExchangerTag)
-
-	return db.GetUserCommodities(database, user.Email)
-}
-
-func CheckAllCommodities(
-	db *sql_service.Database,
-	exchangerTag string,
-	brokerJWT string,
-) [](*h.Commodity) {
-	broker := auth_service.GetUser(db, brokerJWT)
-	database := db.GetDatabaseByTag(exchangerTag)
-
-	if broker.IsBroker != 1 {
-		panic(fmt.Errorf("⛔️ User is not a broker"))
-	}
-
-	return db.GetAllCommodities(database)
+	return db.GetUserCommodities(user.Email)
 }
 
 func AddOrder(
@@ -78,61 +54,42 @@ func AddOrder(
 	userJWT string,
 ) {
 	order.Owner = auth_service.GetUser(db, userJWT)
-	database := db.GetDatabaseByTag(order.Owner.ExchangerTag)
 
 	if order.PrefBroker.Email != "" {
-		order.PrefBroker = db.GetUserData(database, order.PrefBroker.Email)
-		if order.PrefBroker.IsBroker != 1 {
+		order.PrefBroker = db.GetUserData(order.PrefBroker.Email)
+		if !order.PrefBroker.IsBroker {
 			fmt.Println("⛔️ Preferable broker is not a broker")
 			order.PrefBroker = &h.User{}
 		}
 	}
 
-	if !db.CheckIsRecordExist("commodity_market", "commodity_types", "label", order.Commodity.Label) {
+	if !db.CheckIsRecordExist("commodity_types", "label", order.Commodity.Label) {
 		panic(fmt.Errorf("⛔️ No such commodity type %s", order.Commodity.Label))
 	}
 
-	db.AddOrder(database, order)
+	db.AddOrder(order)
 }
 
-func ReadOrders(
+func ReadUserOrders(
 	db *sql_service.Database,
-	isOpen bool,
 	userJWT string,
 ) [](*h.Order) {
 	user := auth_service.GetUser(db, userJWT)
-	database := db.GetDatabaseByTag(user.ExchangerTag)
 
-	return db.ReadOrders(database, user, isOpen)
+	return db.ReadUserOrders(user)
 }
 
-func ReadOrdersNative(
-	db *sql_service.Database,
-	exchangerTag string,
-	brokerJWT string,
-) [](*h.Order) {
-	broker := auth_service.GetUser(db, brokerJWT)
-	database := db.GetDatabaseByTag(exchangerTag)
-
-	if broker.IsBroker != 1 {
-		panic(fmt.Errorf("⛔️ Broker is not a broker"))
-	}
-
-	return db.ReadOrdersNative(database, broker.Id)
-}
-
-func ReadOrdersForeign(
+func ReadAllOrders(
 	db *sql_service.Database,
 	brokerJWT string,
 ) [](*h.Order) {
 	broker := auth_service.GetUser(db, brokerJWT)
 
-	if broker.IsBroker != 1 {
+	if !broker.IsBroker {
 		panic(fmt.Errorf("⛔️ Broker is not a broker"))
 	}
 
-	return db.ReadOrdersForeign()
-
+	return db.ReadAllOrders(broker.Id)
 }
 
 func UpdateOrder(
@@ -142,25 +99,24 @@ func UpdateOrder(
 	userJWT string,
 ) {
 	user := auth_service.GetUser(db, userJWT)
-	database := db.GetDatabaseByTag(user.ExchangerTag)
 
-	if db.GetOrderOwnerId(database, orderId) != user.Id {
+	if db.GetOrderOwnerId(orderId) != user.Id {
 		panic(fmt.Errorf("⛔️ Order is not owned by user"))
 	}
 
 	if newOrder.PrefBroker.Email != "" {
-		newOrder.PrefBroker = db.GetUserData(database, newOrder.PrefBroker.Email)
-		if newOrder.PrefBroker.IsBroker != 1 {
+		newOrder.PrefBroker = db.GetUserData(newOrder.PrefBroker.Email)
+		if !newOrder.PrefBroker.IsBroker {
 			fmt.Println("⛔️ Preferable broker is not a broker")
 			newOrder.PrefBroker = &h.User{}
 		}
 	}
 
-	if !db.CheckIsRecordExist("commodity_market", "commodity_types", "label", newOrder.Commodity.Label) {
+	if !db.CheckIsRecordExist("commodity_types", "label", newOrder.Commodity.Label) {
 		panic(fmt.Errorf("⛔️ No such commodity type %s", newOrder.Commodity.Label))
 	}
 
-	db.UpdateOrder(database, orderId, newOrder)
+	db.UpdateOrder(orderId, newOrder)
 }
 
 func DeleteOrder(
@@ -169,16 +125,15 @@ func DeleteOrder(
 	userJWT string,
 ) {
 	user := auth_service.GetUser(db, userJWT)
-	database := db.GetDatabaseByTag(user.ExchangerTag)
 
-	if db.GetOrderOwnerId(database, orderId) != user.Id {
+	if db.GetOrderOwnerId(orderId) != user.Id {
 		panic(fmt.Errorf("⛔️ Order is not owned by user"))
 	}
 
-	db.DeleteOrder(database, orderId)
+	db.DeleteOrder(orderId)
 }
 
-func ExecuteNativeOrder(
+func ExecuteOrder(
 	db *sql_service.Database,
 	firstOrderId int,
 	secondOrderId int,
@@ -186,14 +141,13 @@ func ExecuteNativeOrder(
 	brokerJWT string,
 ) {
 	broker := auth_service.GetUser(db, brokerJWT)
-	database := db.GetDatabaseByTag(broker.ExchangerTag)
 
-	if broker.IsBroker != 1 {
+	if !broker.IsBroker {
 		panic(fmt.Errorf("⛔️ Broker is not a broker"))
 	}
 
-	firstOrder := db.GetOrderById(database, firstOrderId, broker.Id)
-	secondOrder := db.GetOrderById(database, secondOrderId, broker.Id)
+	firstOrder := db.GetOrderById(firstOrderId, broker.Id)
+	secondOrder := db.GetOrderById(secondOrderId, broker.Id)
 
 	if firstOrder.Owner.Id == secondOrder.Owner.Id {
 		panic(fmt.Errorf("⛔️ Order owners are the same"))
@@ -222,8 +176,7 @@ func ExecuteNativeOrder(
 	}
 
 	if firstOrder.Side == "sell" {
-		db.PerformNativeExchange(
-			database,
+		db.PerformExchange(
 			firstOrder,
 			secondOrder,
 			volume,
@@ -231,91 +184,9 @@ func ExecuteNativeOrder(
 	}
 
 	if secondOrder.Side == "sell" {
-		db.PerformNativeExchange(
-			database,
+		db.PerformExchange(
 			secondOrder,
 			firstOrder,
-			volume,
-		)
-	}
-}
-
-func ExecuteForeignOrder(
-	db *sql_service.Database,
-	firstOrder *h.Order,
-	secondOrder *h.Order,
-	raceId int,
-	volume float64,
-	brokerJWT string,
-) {
-	broker := auth_service.GetUser(db, brokerJWT)
-
-	if broker.IsBroker != 1 {
-		panic(fmt.Errorf("⛔️ Broker is not a broker"))
-	}
-
-	if firstOrder.Exchnager.Tag == secondOrder.Exchnager.Tag {
-		panic(fmt.Errorf("⛔️ Exchnagers are the same, please use native exchange"))
-	}
-
-	race := db.GetRaceById(raceId)
-
-	firstDatabase := db.GetDatabaseByTag(firstOrder.Exchnager.Tag)
-	secondDatabase := db.GetDatabaseByTag(secondOrder.Exchnager.Tag)
-
-	firstOrder = db.GetOrderById(firstDatabase, firstOrder.Id, broker.Id)
-	secondOrder = db.GetOrderById(secondDatabase, secondOrder.Id, broker.Id)
-
-	if firstOrder.Side == secondOrder.Side {
-		panic(fmt.Errorf("⛔️ Orders have the same side"))
-	}
-
-	if (firstOrder.Side == "sell" && db.GetTagByDatabase(firstDatabase) != race.FromExch.Tag) ||
-		(firstOrder.Side == "buy" && db.GetTagByDatabase(firstDatabase) != race.ToExch.Tag) {
-		panic(fmt.Errorf("⛔️ First exchnager is invalid for this race"))
-	}
-
-	if (secondOrder.Side == "sell" && db.GetTagByDatabase(secondDatabase) != race.FromExch.Tag) ||
-		(secondOrder.Side == "buy" && db.GetTagByDatabase(secondDatabase) != race.ToExch.Tag) {
-		panic(fmt.Errorf("⛔️ Second exchnager is invalid for this race"))
-	}
-
-	if firstOrder.Commodity.Volume < volume || secondOrder.Commodity.Volume < volume {
-		panic(fmt.Errorf("⛔️ Executable volume is bigger than one of the order`s volume"))
-	}
-	firstOrder.Commodity.Volume -= volume
-	secondOrder.Commodity.Volume -= volume
-
-	if firstOrder.Commodity.Volume == 0 {
-		firstOrder.State = "executed"
-	} else {
-		firstOrder.State = "active"
-	}
-
-	if secondOrder.Commodity.Volume == 0 {
-		secondOrder.State = "executed"
-	} else {
-		secondOrder.State = "active"
-	}
-
-	if firstOrder.Side == "sell" {
-		db.PerformForeignExchange(
-			firstDatabase,
-			secondDatabase,
-			firstOrder,
-			secondOrder,
-			raceId,
-			volume,
-		)
-	}
-
-	if secondOrder.Side == "sell" {
-		db.PerformForeignExchange(
-			secondDatabase,
-			firstDatabase,
-			secondOrder,
-			firstOrder,
-			raceId,
 			volume,
 		)
 	}

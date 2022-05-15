@@ -10,13 +10,6 @@ func SignUp(
 	db *sql_service.Database,
 	user *h.User,
 ) string {
-	database := db.GetDatabaseByTag(user.ExchangerTag)
-
-	if len(database) == 0 {
-		fmt.Printf("⛔️ Database with a %s tag does not exist\n", user.ExchangerTag)
-		return ""
-	}
-
 	if !h.ValidPassword(user.Password) {
 		fmt.Printf("⛔️ Your password is incorrect\n")
 		return ""
@@ -27,14 +20,23 @@ func SignUp(
 		return ""
 	}
 
-	if db.CheckIsRecordExist(database, "users", "email", user.Email) {
+	if !h.ValidBankAccount(user.BankAccount) {
+		fmt.Printf("⛔️ Your email is incorrect\n")
+		return ""
+	}
+
+	if db.CheckIsRecordExist("users", "email", user.Email) {
 		fmt.Printf("⛔️ Your email is already in use\n")
 		return ""
 	}
 
 	user.Password = h.Hash(user.Password)
 
-	db.SignUp(database, user)
+	db.SignUp(user)
+
+	if len(user.License.Code) != 0 {
+		AssignBroker(db, user)
+	}
 
 	jwt, err := generateJWT(user)
 
@@ -46,30 +48,42 @@ func SignUp(
 	return jwt
 }
 
+func AssignBroker(
+	db *sql_service.Database,
+	user *h.User,
+) {
+
+	if !db.CheckIsRecordExist("licenses", "license_code", user.License.Code) {
+		panic(fmt.Errorf("⛔️ Invalid license code"))
+	}
+
+	user.Id = db.GetId("users", "email", user.Email)
+	license := db.GetLicense(user.License.Code)
+
+	if license.IsTaken {
+		panic(fmt.Errorf("⛔️ This license code is taken"))
+	}
+
+	db.AssignBroker(user.Id, license.Id)
+}
+
 func SignUpCompany(
 	db *sql_service.Database,
 	company *h.Company,
 ) string {
-	table := h.GetTableFromType(company.Type)
-
-	if table == "" {
-		fmt.Println("🛠 Comapny Type is incorrect")
-		return ""
-	}
-
 	if !h.ValidPassword(company.Password) {
 		fmt.Printf("⛔️ Your password is incorrect\n")
 		return ""
 	}
 
-	if db.CheckIsRecordExist("commodity_market", table, "tag", company.Tag) {
+	if db.CheckIsRecordExist("companies", "tag", company.Tag) {
 		fmt.Printf("⛔️ This tag is already in use\n")
 		return ""
 	}
 
 	company.Password = h.Hash(company.Password)
 
-	db.SignUpCompany(table, company)
+	db.SignUpCompany(company)
 
 	jwt, err := generateCompanyJWT(company)
 
@@ -85,17 +99,14 @@ func SignIn(
 	db *sql_service.Database,
 	login *h.User,
 ) string {
-	database := db.GetDatabaseByTag(login.ExchangerTag)
 	login.Password = h.Hash(login.Password)
 
-	user := db.GetUserOnLogin(database, login)
+	user := db.GetUserOnLogin(login)
 
 	if user.Email == "" {
 		fmt.Printf("⛔️ Wrong credentials\n")
 		return ""
 	}
-
-	user.ExchangerTag = login.ExchangerTag
 
 	jwt, err := generateJWT(user)
 
@@ -111,23 +122,14 @@ func SignInCompany(
 	db *sql_service.Database,
 	login *h.Company,
 ) string {
-	table := h.GetTableFromType(login.Type)
-
-	if table == "" {
-		fmt.Println("🛠 Comapny Type is incorrect")
-		return ""
-	}
-
 	login.Password = h.Hash(login.Password)
 
-	company := db.GetCompanyOnLogin(table, login)
+	company := db.GetCompanyOnLogin(login)
 
 	if company.Tag == "" {
 		fmt.Printf("⛔️ Wrong credentials\n")
 		return ""
 	}
-
-	company.Type = login.Type
 
 	jwt, err := generateCompanyJWT(company)
 
@@ -148,13 +150,7 @@ func GetUser(
 		panic(err)
 	}
 
-	database := db.GetDatabaseByTag(user.ExchangerTag)
-
-	if len(database) == 0 {
-		panic(fmt.Errorf("⛔️ Database with a %s tag does not exist", user.ExchangerTag))
-	}
-
-	userData := db.GetUserData(database, user.Email)
+	userData := db.GetUserData(user.Email)
 
 	if userData == nil {
 		panic(fmt.Errorf("⛔️ User does not exist"))
@@ -163,7 +159,6 @@ func GetUser(
 	user.Id = userData.Id
 	user.Name = userData.Name
 	user.Surname = userData.Surname
-	user.ExchangerTag = userData.ExchangerTag
 	user.IsBroker = userData.IsBroker
 
 	return user

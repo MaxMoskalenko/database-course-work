@@ -18,7 +18,7 @@ export JWT_SHIPCOMAPNY_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdXRob3Jpem
 build:
 	go build main.go
 
-init-market-db:
+init-db:
 	./main init
 
 init-exchangers-db:
@@ -43,15 +43,16 @@ create-shipment-company:
 add-commodity:
 	./main add_commodity KCE sbender@mail.ua iron 200 $(shell ./main signin_company PER paprikaa)
 	./main add_commodity LCE mgrusha@mail.ua silver 2 $(shell ./main signin_company PER paprikaa)
-	./main add_commodity LCE ashept@mail.ua cooper 1000 $(shell ./main signin_company PER paprikaa)
+	./main add_commodity LCE ashept@mail.ua cooper 0.8 $(shell ./main signin_company PER paprikaa)
+	./main add_commodity LCE ashept@mail.ua wheat 13.2 $(shell ./main signin_company PER paprikaa)
+	./main add_commodity LCE mgrusha@mail.ua iron 20 $(shell ./main signin_company PER paprikaa)
+	./main add_commodity LCE ashept@mail.ua corn 45 $(shell ./main signin_company PER paprikaa)
 
 check-commodity:
 	./main check_commodity ${JWT_USER_TOKEN}
 
 check-all-commodity:
 	./main check_commodity_broker KCE ${JWT_USER_TOKEN}
-
-init: init-market-db init-exchangers-db
 
 signup: create-users create-company create-shipment-company
 
@@ -111,7 +112,7 @@ execute-native:
 execute-foreign:
 	./main execute_foreign_order KCE 1 LCE 1 1 15 $(shell ./main signin_user KCE sbender@mail.ua vashbatk0)
 
-init: init-market-db init-exchangers-db create-users create-company add-commodity add_order
+init: init-db
 
-start: build finish-race
+start: build init
 

@@ -9,9 +9,8 @@ func PrintForeignOrders(orders [](*Order)) {
 
 	for _, o := range orders {
 		result += fmt.Sprintf(
-			"💼 %d %s. Owner: %s %s (%s) %s %f %s of %s\n",
+			"💼 %d. Owner: %s %s (%s) %s %f %s of %s\n",
 			o.Id,
-			o.Owner.ExchangerTag,
 			o.Owner.Name,
 			o.Owner.Surname,
 			o.Owner.Email,

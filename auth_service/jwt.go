@@ -18,7 +18,6 @@ func generateJWT(user *h.User) (string, error) {
 
 	claims["authorized"] = true
 	claims["email"] = user.Email
-	claims["exch"] = user.ExchangerTag
 	claims["exp"] = time.Now().Add(time.Hour * 2).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
@@ -37,7 +36,6 @@ func generateCompanyJWT(company *h.Company) (string, error) {
 
 	claims["authorized"] = true
 	claims["tag"] = company.Tag
-	claims["type"] = company.Type
 	claims["exp"] = time.Now().Add(time.Hour * 2).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
@@ -64,7 +62,6 @@ func ReadJWT(unparsedToken string) (*h.User, error) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		var user h.User
-		user.ExchangerTag = fmt.Sprintf("%v", claims["exch"])
 		user.Email = fmt.Sprintf("%v", claims["email"])
 		return &user, nil
 	}
@@ -88,7 +85,6 @@ func ReadCompanyJWT(unparsedToken string) (*h.Company, error) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		var company h.Company
 		company.Tag = fmt.Sprintf("%v", claims["tag"])
-		company.Type = fmt.Sprintf("%v", claims["type"])
 		return &company, nil
 	}
 	return nil, fmt.Errorf("⛔️ Something went wrong during token read")
