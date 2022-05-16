@@ -15,7 +15,7 @@ func (db *Database) AddCommodity(commodity *h.Commodity) {
 	}
 
 	sqlStatement := `
-		INSERT INTO commodities_account (owner_user_id, commodity_id, volume, source)
+		INSERT INTO commodities_account (owner_id, commodity_id, volume, source)
 		VALUES (?, ?, ?, ?);
 	`
 
@@ -55,28 +55,6 @@ func (db *Database) AddCommodity(commodity *h.Commodity) {
 			tx.Rollback()
 			panic(err)
 		}
-	} else if commodity.Source.Type == "trade" {
-		sqlStatement = `
-			INSERT INTO source_commodities_trade 
-				(transaction_id, source_owner_id, source_order_id, source_broker_id)
-			VALUES (?, ?, ?, ?);
-		`
-
-		err = tx.QueryRow(
-			sqlStatement,
-			lastId,
-			commodity.Source.UserId,
-			commodity.Source.OrderId,
-			commodity.Source.BrokerId,
-		).Err()
-
-		if err != nil {
-			tx.Rollback()
-			panic(err)
-		}
-	} else {
-		tx.Rollback()
-		panic(fmt.Errorf("⛔️ Invalid source type"))
 	}
 
 	err = tx.Commit()
@@ -87,44 +65,47 @@ func (db *Database) AddCommodity(commodity *h.Commodity) {
 
 }
 
-func (db *Database) GetUserCommodities(userEmail string) [](*h.Commodity) {
-	// userId := db.GetId("users", "email", userEmail)
+func (db *Database) GetUserCommodities(userId int) [](*h.Commodity) {
+	sqlStatement := `
+		SELECT CT.label, SUM(C.volume), CU.unit, U.name, U.surname, U.email 
+			FROM commodities_account AS C
+		JOIN commodity_types AS CT
+			ON CT.id=C.commodity_id
+		JOIN units AS CU
+			ON CU.id = CT.unit_id 
+		JOIN users AS U 
+			ON U.id = C.owner_id
+		WHERE C.owner_id = ?
+		GROUP BY C.owner_id, C.commodity_id;
+	`
 
-	// sqlStatement := fmt.Sprintf(`
-	// 	SELECT CT.label, C.volume, CU.unit
-	// 	FROM %s.commodities AS C
-	// 	INNER JOIN (
-	// 		SELECT label, unit_id, id
-	// 		FROM commodity_market.commodity_types
-	// 	) AS CT
-	// 		ON CT.id=C.commodity_id
-	// 	INNER JOIN (
-	// 		SELECT unit, id
-	// 		FROM commodity_market.units
-	// 	) AS CU
-	// 		ON CU.id = CT.unit_id
-	// 	WHERE user_id=?;
-	// `, database)
-
-	// rows, err := db.sql.Query(
-	// 	sqlStatement,
-	// 	userId,
-	// )
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// }
-	// defer rows.Close()
+	rows, err := db.sql.Query(
+		sqlStatement,
+		userId,
+	)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	defer rows.Close()
 
 	var commodities []*h.Commodity
 
-	// for rows.Next() {
-	// 	var commodity h.Commodity
-	// 	if err := rows.Scan(&commodity.Label, &commodity.Volume, &commodity.Unit); err != nil {
-	// 		panic(err)
-	// 	}
-	// 	commodity.Owner = db.GetUserData(userEmail)
-	// 	commodities = append(commodities, &commodity)
-	// }
+	for rows.Next() {
+		commodity := h.Commodity{
+			Owner: &h.User{},
+		}
+		if err := rows.Scan(
+			&commodity.Label,
+			&commodity.Volume,
+			&commodity.Unit,
+			&commodity.Owner.Name,
+			&commodity.Owner.Surname,
+			&commodity.Owner.Email,
+		); err != nil {
+			panic(err)
+		}
+		commodities = append(commodities, &commodity)
+	}
 
 	return commodities
 }
@@ -161,20 +142,37 @@ func (db *Database) GetAvailableCommodities() [](*h.Commodity) {
 	return commodities
 }
 
-func (db *Database) AddOrder(order *h.Order) {
-	commodityId := db.GetId("commodity_types", "label", order.Commodity.Label)
-
+func (db *Database) GetUnlockedVolume(userId int, commodityId int) float64 {
 	sqlStatement := `
-		INSERT INTO orders (owner_id, side, state, commodity_id, volume, pref_broker_id)
-		VALUES (?, ?, ?, ?, ?, ?)
+		CALL GetUnlockedVolume(?, ?);
+	`
+
+	volume := 0.0
+
+	err := db.sql.QueryRow(
+		sqlStatement,
+		userId,
+		commodityId,
+	).Scan(&volume)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return volume
+}
+
+func (db *Database) AddOrder(order *h.Order) {
+	sqlStatement := `
+		INSERT INTO orders (owner_id, side, commodity_id, volume, pref_broker_id)
+		VALUES (?, ?, ?, ?, ?)
 	`
 
 	err := db.sql.QueryRow(
 		sqlStatement,
 		order.Owner.Id,
 		order.Side,
-		"active",
-		commodityId,
+		order.Commodity.Id,
 		order.Commodity.Volume,
 		h.ConvertZeroToNil(order.PrefBroker.Id),
 	).Err()
@@ -184,68 +182,9 @@ func (db *Database) AddOrder(order *h.Order) {
 	}
 }
 
-func (db *Database) ReadUserOrders(user *h.User) [](*h.Order) {
+func (db *Database) ReadOrders(brokerId int, userId int) [](*h.Order) {
 	sqlStatement := `
-		SELECT O.id, O.side, O.state, CT.label, CU.unit, O.volume, PB.name, PB.surname 
-		FROM orders AS O
-		JOIN (
-			SELECT id, label, unit_id
-			FROM commodity_market.commodity_types
-		) AS CT
-		ON CT.id = O.commodity_id
-		JOIN (
-			SELECT id, unit
-			FROM commodity_market.units
-		) AS CU
-		ON CU.id = CT.unit_id
-		LEFT JOIN (
-			SELECT id, name, surname
-			FROM users
-		) AS PB
-		ON O.pref_broker_id IS NOT NULL AND PB.id = O.pref_broker_id;
-	`
-
-	rows, err := db.sql.Query(sqlStatement, user.Id)
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	defer rows.Close()
-
-	var orders [](*h.Order)
-
-	for rows.Next() {
-		var order h.Order
-		var commodity h.Commodity
-		var broker h.User
-		var brokerName, brokerSurname sql.NullString
-
-		if err := rows.Scan(
-			&order.Id,
-			&order.Side,
-			&order.State,
-			&commodity.Label,
-			&commodity.Unit,
-			&commodity.Volume,
-			&brokerName,
-			&brokerSurname,
-		); err != nil {
-			panic(err)
-		}
-		broker.Name = brokerName.String
-		broker.Surname = brokerSurname.String
-		order.Owner = user
-		order.Commodity = &commodity
-		order.PrefBroker = &broker
-		orders = append(orders, &order)
-	}
-
-	return orders
-}
-
-func (db *Database) ReadAllOrders(brokerId int) [](*h.Order) {
-	sqlStatement := `
-		SELECT O.id, O.side, O.state, CT.label, CU.unit, O.volume, PB.name, PB.surname, U.name, U.surname, U.email
+		SELECT O.id, O.side, O.state, CT.label, CU.unit, O.volume, O.executed_volume, PB.name, PB.surname, U.name, U.surname, U.email
 		FROM orders AS O
 		JOIN (
 			SELECT id, label, unit_id
@@ -267,10 +206,19 @@ func (db *Database) ReadAllOrders(brokerId int) [](*h.Order) {
 			FROM users
 		) AS U
 		ON U.id = O.owner_id 
-		WHERE O.pref_broker_id=? OR O.pref_broker_id IS NULL;
+		WHERE 
+			(?=0 OR O.owner_id=?) AND
+			(?=0 OR O.pref_broker_id=? OR O.pref_broker_id IS NULL) AND
+			O.state = 'active';
 	`
 
-	rows, err := db.sql.Query(sqlStatement, brokerId)
+	rows, err := db.sql.Query(
+		sqlStatement,
+		userId,
+		userId,
+		brokerId,
+		brokerId,
+	)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -292,6 +240,7 @@ func (db *Database) ReadAllOrders(brokerId int) [](*h.Order) {
 			&commodity.Label,
 			&commodity.Unit,
 			&commodity.Volume,
+			&order.ExecutedVolume,
 			&brokerName,
 			&brokerSurname,
 			&user.Name,
@@ -331,32 +280,10 @@ func (db *Database) GetOrderOwnerId(orderId int) int {
 	return ownerId
 }
 
-func (db *Database) UpdateOrder(oldId int, newOrder *h.Order) {
-	commodityId := db.GetId("commodity_types", "label", newOrder.Commodity.Label)
-
+func (db *Database) CancelOrder(orderId int) {
 	sqlStatement := `
-		UPDATE orders 
-		SET side=?, commodity_id=?, volume=?, pref_broker_id=?
-		WHERE id=?;
-	`
-
-	err := db.sql.QueryRow(
-		sqlStatement,
-		newOrder.Side,
-		commodityId,
-		newOrder.Commodity.Volume,
-		h.ConvertZeroToNil(newOrder.PrefBroker.Id),
-		oldId,
-	).Err()
-
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (db *Database) DeleteOrder(orderId int) {
-	sqlStatement := `
-		DELETE FROM orders 
+		UPDATE orders
+		SET state = 'canceled'
 		WHERE id=?;
 	`
 
@@ -372,7 +299,7 @@ func (db *Database) DeleteOrder(orderId int) {
 
 func (db *Database) GetOrderById(orderId int, prefBrokerId int) *h.Order {
 	sqlStatement := `
-		SELECT id, side, commodity_id, volume, owner_id
+		SELECT id, side, commodity_id, volume, executed_volume, owner_id
 		FROM orders
 		WHERE 
 			(pref_broker_id=? OR pref_broker_id IS NULL) AND 
@@ -395,6 +322,7 @@ func (db *Database) GetOrderById(orderId int, prefBrokerId int) *h.Order {
 		&order.Side,
 		&order.Commodity.Id,
 		&order.Commodity.Volume,
+		&order.ExecutedVolume,
 		&order.Owner.Id,
 	)
 
@@ -409,6 +337,7 @@ func (db *Database) PerformExchange(
 	sellOrder *h.Order,
 	buyOrder *h.Order,
 	volumeChange float64,
+	brokerId int,
 ) {
 	tx, err := db.sql.Begin()
 
@@ -419,8 +348,30 @@ func (db *Database) PerformExchange(
 
 	updateTransactionOrder(tx, sellOrder)
 	updateTransactionOrder(tx, buyOrder)
-	upsertTransactionCommodities(tx, sellOrder.Owner.Id, sellOrder.Commodity.Id, -volumeChange)
-	upsertTransactionCommodities(tx, buyOrder.Owner.Id, buyOrder.Commodity.Id, volumeChange)
+	upsertTransactionCommodities(
+		tx,
+		sellOrder.Owner.Id,
+		sellOrder.Commodity.Id,
+		-volumeChange,
+		&h.CommoditySource{
+			SourceUserId:  buyOrder.Owner.Id,
+			SourceOrderId: buyOrder.Id,
+			DestOrderId:   sellOrder.Id,
+			BrokerId:      brokerId,
+		},
+	)
+	upsertTransactionCommodities(
+		tx,
+		buyOrder.Owner.Id,
+		buyOrder.Commodity.Id,
+		volumeChange,
+		&h.CommoditySource{
+			SourceUserId:  sellOrder.Owner.Id,
+			SourceOrderId: sellOrder.Id,
+			DestOrderId:   buyOrder.Id,
+			BrokerId:      brokerId,
+		},
+	)
 
 	err = tx.Commit()
 

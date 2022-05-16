@@ -70,7 +70,7 @@ func (db *Database) InitDatabase() {
 	db.sql.Exec(`
 		CREATE TABLE IF NOT EXISTS commodities_account (
 			id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-			owner_user_id INT NOT NULL,
+			owner_id INT NOT NULL,
 			commodity_id INT NOT NULL,
 			volume FLOAT NOT NULL,
 			source ENUM('company', 'trade') NOT NULL,
@@ -90,7 +90,8 @@ func (db *Database) InitDatabase() {
 			transaction_id INT NOT NULL PRIMARY KEY,
 			source_user_id INT NOT NULL,
 			source_order_id INT NOT NULL,
-			source_broker_id INT NOT NULL
+			dest_order_id INT NOT NULL,
+			broker_id INT NOT NULL
 		);
 	`)
 
@@ -99,7 +100,7 @@ func (db *Database) InitDatabase() {
 			id INT PRIMARY KEY AUTO_INCREMENT,
 			owner_id INT NOT NULL,
 			side ENUM ('buy', 'sell'),
-			state ENUM ('active', 'executed', 'canceled'),
+			state ENUM ('active', 'executed', 'canceled') DEFAULT 'active',
 			commodity_id INT NOT NULL,
 			volume FLOAT NOT NULL,
 			executed_volume FLOAT NOT NULL DEFAULT 0,
@@ -121,7 +122,8 @@ func (db *Database) InitDatabase() {
 		ADD FOREIGN KEY (transaction_id) REFERENCES commodities_account(id),
 		ADD FOREIGN KEY (source_user_id) REFERENCES users(id),
 		ADD FOREIGN KEY (source_order_id) REFERENCES orders(id),
-		ADD FOREIGN KEY (source_broker_id) REFERENCES users(id)
+		ADD FOREIGN KEY (dest_order_id) REFERENCES orders(id),
+		ADD FOREIGN KEY (broker_id) REFERENCES users(id)
 	`)
 
 	db.sql.Exec(`
@@ -132,7 +134,7 @@ func (db *Database) InitDatabase() {
 
 	db.sql.Exec(`
 		ALTER TABLE commodities_account
-		ADD FOREIGN KEY (owner_user_id) REFERENCES users(id),
+		ADD FOREIGN KEY (owner_id) REFERENCES users(id),
 		ADD FOREIGN KEY (commodity_id) REFERENCES commodity_types(id);
 	`)
 
@@ -160,6 +162,24 @@ func (db *Database) InitDatabase() {
 
 			SET NEW.name = CONCAT(@first_name_letter, @other_name_letters);
 			SET NEW.surname = CONCAT(@first_surname_letter, @other_surname_letters);
+		END;
+	`)
+
+	db.sql.Exec(`
+		CREATE PROCEDURE GetUnlockedVolume(IN i_user_id INT, IN i_commodity_id INT)
+		BEGIN
+			SET @total_volume := (
+				SELECT COALESCE(SUM(volume), 0) FROM commodities_account
+				WHERE commodity_id = i_commodity_id  AND owner_id = i_user_id
+			);
+		
+			SET @locked_volume := (
+				SELECT COALESCE((SUM(volume)-SUM(executed_volume)), 0)
+				FROM orders
+				WHERE commodity_id = i_commodity_id AND owner_id = i_user_id AND side = 'sell' AND state = 'active'
+			);
+		
+			SELECT @total_volume - @locked_volume AS unlocked_volume;
 		END;
 	`)
 

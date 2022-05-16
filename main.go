@@ -42,19 +42,16 @@ func main() {
 		return
 	}
 
-	// _ signup_company ${tag} ${title} ${email} ${phone_number} ${password}
-	if request == "signup_company" {
-		if len(os.Args) < 7 {
-			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 7)
+	// _ signin_user ${email} ${password}
+	if request == "signin_user" {
+		if len(os.Args) < 4 {
+			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 4)
 		}
-		jwt := auth_service.SignUpCompany(
+		jwt := auth_service.SignIn(
 			&db,
-			&h.Company{
-				Tag:         os.Args[2],
-				Title:       os.Args[3],
-				Email:       os.Args[4],
-				PhoneNumber: os.Args[5],
-				Password:    os.Args[6],
+			&h.User{
+				Email:    os.Args[2],
+				Password: os.Args[3],
 			},
 		)
 		fmt.Println(jwt)
@@ -75,6 +72,25 @@ func main() {
 				},
 			},
 		)
+		return
+	}
+
+	// _ signup_company ${tag} ${title} ${email} ${phone_number} ${password}
+	if request == "signup_company" {
+		if len(os.Args) < 7 {
+			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 7)
+		}
+		jwt := auth_service.SignUpCompany(
+			&db,
+			&h.Company{
+				Tag:         os.Args[2],
+				Title:       os.Args[3],
+				Email:       os.Args[4],
+				PhoneNumber: os.Args[5],
+				Password:    os.Args[6],
+			},
+		)
+		fmt.Println(jwt)
 		return
 	}
 
@@ -157,8 +173,6 @@ func main() {
 		return
 	}
 
-	// _ cancel_order ${order_id} ${user_jwt}
-
 	// _ list_orders_my ${user_jwt}
 	if request == "list_orders_my" {
 		if len(os.Args) < 3 {
@@ -185,38 +199,13 @@ func main() {
 		return
 	}
 
-	// _ update_order ${order_id} ${side} ${commodity_label} ${volume} ${preferable_broker_email} ${user_jwt}
-	if request == "update_order" {
-		if len(os.Args) < 8 {
-			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 8)
-		}
-		orderId, _ := strconv.Atoi(os.Args[2])
-		volume, _ := strconv.ParseFloat(os.Args[5], 64)
-		ex_service.UpdateOrder(
-			&db,
-			orderId,
-			&h.Order{
-				Side: os.Args[3],
-				Commodity: &h.Commodity{
-					Label:  os.Args[4],
-					Volume: volume,
-				},
-				PrefBroker: &h.User{
-					Email: os.Args[6],
-				},
-			},
-			os.Args[7],
-		)
-		return
-	}
-
-	// _ delete_order ${order_id} ${user_jwt}
-	if request == "delete_order" {
+	// _ cancel_order ${order_id} ${user_jwt}
+	if request == "cancel_order" {
 		if len(os.Args) < 4 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 4)
 		}
 		orderId, _ := strconv.Atoi(os.Args[2])
-		ex_service.DeleteOrder(
+		ex_service.CancelOrder(
 			&db,
 			orderId,
 			os.Args[3],

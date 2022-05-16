@@ -11,7 +11,7 @@ func updateTransactionOrder(
 ) {
 	sqlStatement := `
 		UPDATE orders
-		SET volume = ?, state = ?
+		SET volume = ?, state = ?, executed_volume = ?
 		WHERE id = ?;
 	`
 
@@ -19,6 +19,7 @@ func updateTransactionOrder(
 		sqlStatement,
 		order.Commodity.Volume,
 		order.State,
+		order.ExecutedVolume,
 		order.Id,
 	).Err()
 
@@ -28,30 +29,55 @@ func updateTransactionOrder(
 	}
 }
 
-// TODO commodities things
 func upsertTransactionCommodities(
 	tx *sql.Tx,
 	userId int,
 	commodityId int,
 	volume float64,
+	source *h.CommoditySource,
 ) {
-	// sqlStatement := `
-	// 	INSERT INTO
-	// 		commodities (user_id, commodity_id, volume)
-	// 	VALUES (?, ?, ?)
-	// 	ON DUPLICATE KEY UPDATE volume = volume + ?;
-	// `
+	sqlStatement := `
+		INSERT INTO
+			commodities_account (owner_id, commodity_id, volume, source)
+		VALUES (?, ?, ?, 'trade');
+	`
 
-	// err := tx.QueryRow(
-	// 	sqlStatement,
-	// 	userId,
-	// 	commodityId,
-	// 	volume,
-	// 	volume,
-	// ).Err()
+	res, err := tx.Exec(
+		sqlStatement,
+		userId,
+		commodityId,
+		volume,
+	)
 
-	// if err != nil {
-	// 	tx.Rollback()
-	// 	panic(err)
-	// }
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	lastId, err := res.LastInsertId()
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	sqlStatement = `
+		INSERT INTO 
+			source_commodities_trade (transaction_id, source_user_id, source_order_id, dest_order_id, broker_id)
+		VALUES (?, ?, ?, ?, ?)
+	`
+
+	err = tx.QueryRow(
+		sqlStatement,
+		lastId,
+		source.SourceUserId,
+		source.SourceOrderId,
+		source.DestOrderId,
+		source.BrokerId,
+	).Err()
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
 }

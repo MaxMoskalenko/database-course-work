@@ -14,13 +14,12 @@ func PrintPersonalOrders(orders [](*Order)) {
 		}
 
 		result += fmt.Sprintf(
-			"💼 %d. %s %f %s of %s (%s) %s\n",
+			"💼 %d. %s %f %s of %s %s\n",
 			o.Id,
 			o.Side,
-			o.Commodity.Volume,
+			o.Commodity.Volume-o.ExecutedVolume,
 			o.Commodity.Unit,
 			o.Commodity.Label,
-			o.State,
 			prefBroker,
 		)
 	}

@@ -45,21 +45,23 @@ type Commodity struct {
 }
 
 type CommoditySource struct {
-	Type      string
-	CompanyId int
-	UserId    int
-	OrderId   int
-	BrokerId  int
+	Type          string
+	CompanyId     int
+	SourceUserId  int
+	SourceOrderId int
+	DestOrderId   int
+	BrokerId      int
 }
 
 type Order struct {
-	Id         int
-	Owner      *User
-	Side       string
-	State      string
-	Commodity  *Commodity
-	PrefBroker *User
-	Exchnager  *Exchanger
+	Id             int
+	Owner          *User
+	Side           string
+	State          string
+	Commodity      *Commodity
+	ExecutedVolume float64
+	PrefBroker     *User
+	Exchnager      *Exchanger
 }
 
 type Race struct {

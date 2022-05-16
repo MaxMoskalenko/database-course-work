@@ -56,7 +56,7 @@ func CheckCommodities(
 ) [](*h.Commodity) {
 	user := auth_service.GetUser(db, userJWT)
 
-	return db.GetUserCommodities(user.Email)
+	return db.GetUserCommodities(user.Id)
 }
 
 func AddOrder(
@@ -78,6 +78,11 @@ func AddOrder(
 		panic(fmt.Errorf("⛔️ No such commodity type %s", order.Commodity.Label))
 	}
 
+	order.Commodity.Id = db.GetId("commodity_types", "label", order.Commodity.Label)
+	if order.Side == "sell" && db.GetUnlockedVolume(order.Owner.Id, order.Commodity.Id) < order.Commodity.Volume {
+		panic(fmt.Errorf("⛔️ You have insufficient amount to sell"))
+	}
+
 	db.AddOrder(order)
 }
 
@@ -87,7 +92,7 @@ func ReadUserOrders(
 ) [](*h.Order) {
 	user := auth_service.GetUser(db, userJWT)
 
-	return db.ReadUserOrders(user)
+	return db.ReadOrders(0, user.Id)
 }
 
 func ReadAllOrders(
@@ -100,37 +105,10 @@ func ReadAllOrders(
 		panic(fmt.Errorf("⛔️ Broker is not a broker"))
 	}
 
-	return db.ReadAllOrders(broker.Id)
+	return db.ReadOrders(broker.Id, 0)
 }
 
-func UpdateOrder(
-	db *sql_service.Database,
-	orderId int,
-	newOrder *h.Order,
-	userJWT string,
-) {
-	user := auth_service.GetUser(db, userJWT)
-
-	if db.GetOrderOwnerId(orderId) != user.Id {
-		panic(fmt.Errorf("⛔️ Order is not owned by user"))
-	}
-
-	if newOrder.PrefBroker.Email != "" {
-		newOrder.PrefBroker = db.GetUserData(newOrder.PrefBroker.Email)
-		if !newOrder.PrefBroker.IsBroker {
-			fmt.Println("⛔️ Preferable broker is not a broker")
-			newOrder.PrefBroker = &h.User{}
-		}
-	}
-
-	if !db.CheckIsRecordExist("commodity_types", "label", newOrder.Commodity.Label) {
-		panic(fmt.Errorf("⛔️ No such commodity type %s", newOrder.Commodity.Label))
-	}
-
-	db.UpdateOrder(orderId, newOrder)
-}
-
-func DeleteOrder(
+func CancelOrder(
 	db *sql_service.Database,
 	orderId int,
 	userJWT string,
@@ -141,7 +119,7 @@ func DeleteOrder(
 		panic(fmt.Errorf("⛔️ Order is not owned by user"))
 	}
 
-	db.DeleteOrder(orderId)
+	db.CancelOrder(orderId)
 }
 
 func ExecuteOrder(
@@ -168,19 +146,20 @@ func ExecuteOrder(
 		panic(fmt.Errorf("⛔️ Orders have the same side"))
 	}
 
-	if firstOrder.Commodity.Volume < volume || secondOrder.Commodity.Volume < volume {
+	if firstOrder.Commodity.Volume-firstOrder.ExecutedVolume < volume ||
+		secondOrder.Commodity.Volume-secondOrder.ExecutedVolume < volume {
 		panic(fmt.Errorf("⛔️ Executable volume is bigger than one of the order`s volume"))
 	}
-	firstOrder.Commodity.Volume -= volume
-	secondOrder.Commodity.Volume -= volume
+	firstOrder.ExecutedVolume += volume
+	secondOrder.ExecutedVolume += volume
 
-	if firstOrder.Commodity.Volume == 0 {
+	if firstOrder.Commodity.Volume == firstOrder.ExecutedVolume {
 		firstOrder.State = "executed"
 	} else {
 		firstOrder.State = "active"
 	}
 
-	if secondOrder.Commodity.Volume == 0 {
+	if secondOrder.Commodity.Volume == secondOrder.ExecutedVolume {
 		secondOrder.State = "executed"
 	} else {
 		secondOrder.State = "active"
@@ -191,6 +170,7 @@ func ExecuteOrder(
 			firstOrder,
 			secondOrder,
 			volume,
+			broker.Id,
 		)
 	}
 
@@ -199,6 +179,7 @@ func ExecuteOrder(
 			secondOrder,
 			firstOrder,
 			volume,
+			broker.Id,
 		)
 	}
 }
