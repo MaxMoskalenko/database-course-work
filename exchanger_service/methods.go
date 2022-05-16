@@ -11,50 +11,61 @@ func AddCommodity(
 	db *sql_service.Database,
 	commodity *h.Commodity,
 	companyJWT string,
-) {
+) error {
 	company, err := auth_service.ReadCompanyJWT(companyJWT)
 
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	if !db.CheckIsRecordExist("companies", "tag", company.Tag) {
-		fmt.Printf("⛔️ No such company %s\n", company.Tag)
-		return
+		return fmt.Errorf("no such company %s", company.Tag)
 	}
 
 	if !db.CheckIsRecordExist("commodity_types", "label", commodity.Label) {
-		fmt.Printf("⛔️ No such commodity type %s\n", commodity.Label)
-		return
+		return fmt.Errorf("no such commodity type %s", commodity.Label)
 	}
 
 	if !db.CheckIsRecordExist("users", "email", commodity.Owner.Email) {
-		fmt.Printf("⛔️ No such user %s \n", commodity.Owner.Email)
-		return
+		return fmt.Errorf("no such user %s", commodity.Owner.Email)
 	}
 
 	if commodity.Volume <= 0 {
-		panic(fmt.Errorf("⛔️ Company cannot take commodities from user"))
+		return fmt.Errorf("company cannot take commodities from user")
+	}
+
+	companyId, err := db.GetId("companies", "tag", company.Tag)
+
+	if err != nil {
+		return err
 	}
 
 	commodity.Source = &h.CommoditySource{
 		Type:      "company",
-		CompanyId: db.GetId("companies", "tag", company.Tag),
+		CompanyId: companyId,
 	}
 
-	commodity.Owner.Id = db.GetId("users", "email", commodity.Owner.Email)
-	commodity.Id = db.GetId("commodity_types", "label", commodity.Label)
+	commodity.Owner.Id, err = db.GetId("users", "email", commodity.Owner.Email)
+	if err != nil {
+		return err
+	}
 
-	db.AddCommodity(commodity)
+	commodity.Id, err = db.GetId("commodity_types", "label", commodity.Label)
+	if err != nil {
+		return err
+	}
 
+	return db.AddCommodity(commodity)
 }
 
 func CheckCommodities(
 	db *sql_service.Database,
 	userJWT string,
-) [](*h.Commodity) {
-	user := auth_service.GetUser(db, userJWT)
+) ([](*h.Commodity), error) {
+	user, err := auth_service.GetUser(db, userJWT)
+	if err != nil {
+		return nil, err
+	}
 
 	return db.GetUserCommodities(user.Id)
 }
@@ -63,34 +74,55 @@ func AddOrder(
 	db *sql_service.Database,
 	order *h.Order,
 	userJWT string,
-) {
-	order.Owner = auth_service.GetUser(db, userJWT)
+) error {
+	var err error
+	order.Owner, err = auth_service.GetUser(db, userJWT)
+
+	if err != nil {
+		return err
+	}
 
 	if order.PrefBroker.Email != "" {
-		order.PrefBroker = db.GetUserData(order.PrefBroker.Email)
+		order.PrefBroker, err = db.GetUserData(order.PrefBroker.Email)
+		if err != nil {
+			return err
+		}
 		if !order.PrefBroker.IsBroker {
-			fmt.Println("⛔️ Preferable broker is not a broker")
+			fmt.Println("⛔️ preferable broker is not a broker")
 			order.PrefBroker = &h.User{}
 		}
 	}
 
 	if !db.CheckIsRecordExist("commodity_types", "label", order.Commodity.Label) {
-		panic(fmt.Errorf("⛔️ No such commodity type %s", order.Commodity.Label))
+		return fmt.Errorf("no such commodity type %s", order.Commodity.Label)
 	}
 
-	order.Commodity.Id = db.GetId("commodity_types", "label", order.Commodity.Label)
-	if order.Side == "sell" && db.GetUnlockedVolume(order.Owner.Id, order.Commodity.Id) < order.Commodity.Volume {
-		panic(fmt.Errorf("⛔️ You have insufficient amount to sell"))
+	order.Commodity.Id, err = db.GetId("commodity_types", "label", order.Commodity.Label)
+	if err != nil {
+		return err
 	}
 
-	db.AddOrder(order)
+	unlockedVolume, err := db.GetUnlockedVolume(order.Owner.Id, order.Commodity.Id)
+	if err != nil {
+		return err
+	}
+
+	if order.Side == "sell" && unlockedVolume < order.Commodity.Volume {
+		return fmt.Errorf("you have insufficient amount to sell")
+	}
+
+	return db.AddOrder(order)
 }
 
 func ReadUserOrders(
 	db *sql_service.Database,
 	userJWT string,
-) [](*h.Order) {
-	user := auth_service.GetUser(db, userJWT)
+) ([](*h.Order), error) {
+	user, err := auth_service.GetUser(db, userJWT)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return db.ReadOrders(0, user.Id)
 }
@@ -98,11 +130,15 @@ func ReadUserOrders(
 func ReadAllOrders(
 	db *sql_service.Database,
 	brokerJWT string,
-) [](*h.Order) {
-	broker := auth_service.GetUser(db, brokerJWT)
+) ([](*h.Order), error) {
+	broker, err := auth_service.GetUser(db, brokerJWT)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if !broker.IsBroker {
-		panic(fmt.Errorf("⛔️ Broker is not a broker"))
+		return nil, fmt.Errorf("broker is not a broker")
 	}
 
 	return db.ReadOrders(broker.Id, 0)
@@ -112,14 +148,22 @@ func CancelOrder(
 	db *sql_service.Database,
 	orderId int,
 	userJWT string,
-) {
-	user := auth_service.GetUser(db, userJWT)
-
-	if db.GetOrderOwnerId(orderId) != user.Id {
-		panic(fmt.Errorf("⛔️ Order is not owned by user"))
+) error {
+	user, err := auth_service.GetUser(db, userJWT)
+	if err != nil {
+		return err
 	}
 
-	db.CancelOrder(orderId)
+	orderOwnerId, err := db.GetOrderOwnerId(orderId)
+	if err != nil {
+		return err
+	}
+
+	if orderOwnerId != user.Id {
+		return fmt.Errorf("order is not owned by user")
+	}
+
+	return db.CancelOrder(orderId)
 }
 
 func ExecuteOrder(
@@ -128,27 +172,41 @@ func ExecuteOrder(
 	secondOrderId int,
 	volume float64,
 	brokerJWT string,
-) {
-	broker := auth_service.GetUser(db, brokerJWT)
-
-	if !broker.IsBroker {
-		panic(fmt.Errorf("⛔️ Broker is not a broker"))
+) error {
+	broker, err := auth_service.GetUser(db, brokerJWT)
+	if err != nil {
+		return err
 	}
 
-	firstOrder := db.GetOrderById(firstOrderId, broker.Id)
-	secondOrder := db.GetOrderById(secondOrderId, broker.Id)
+	if !broker.IsBroker {
+		return fmt.Errorf("broker is not a broker")
+	}
+
+	firstOrder, err := db.GetOrderById(firstOrderId, broker.Id)
+	if err != nil {
+		return err
+	}
+
+	secondOrder, err := db.GetOrderById(secondOrderId, broker.Id)
+	if err != nil {
+		return err
+	}
+
+	if firstOrder.State != "active" || secondOrder.State != "active" {
+		return fmt.Errorf("one of the orders is not active")
+	}
 
 	if firstOrder.Owner.Id == secondOrder.Owner.Id {
-		panic(fmt.Errorf("⛔️ Order owners are the same"))
+		return fmt.Errorf("order owners are the same")
 	}
 
 	if firstOrder.Side == secondOrder.Side {
-		panic(fmt.Errorf("⛔️ Orders have the same side"))
+		return fmt.Errorf("orders have the same side")
 	}
 
 	if firstOrder.Commodity.Volume-firstOrder.ExecutedVolume < volume ||
 		secondOrder.Commodity.Volume-secondOrder.ExecutedVolume < volume {
-		panic(fmt.Errorf("⛔️ Executable volume is bigger than one of the order`s volume"))
+		return fmt.Errorf("executable volume is bigger than one of the order`s volume")
 	}
 	firstOrder.ExecutedVolume += volume
 	secondOrder.ExecutedVolume += volume
@@ -166,20 +224,27 @@ func ExecuteOrder(
 	}
 
 	if firstOrder.Side == "sell" {
-		db.PerformExchange(
+		err = db.PerformExchange(
 			firstOrder,
 			secondOrder,
 			volume,
 			broker.Id,
 		)
+		if err != nil {
+			return err
+		}
 	}
 
 	if secondOrder.Side == "sell" {
-		db.PerformExchange(
+		err = db.PerformExchange(
 			secondOrder,
 			firstOrder,
 			volume,
 			broker.Id,
 		)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }

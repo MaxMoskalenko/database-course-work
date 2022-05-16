@@ -12,7 +12,11 @@ import (
 
 func main() {
 	request := os.Args[1]
-	db := sql_service.Connect()
+	db, err := sql_service.Connect()
+
+	if err != nil {
+		fmt.Printf("⛔️ Something went wrong during connection : %s", err.Error())
+	}
 
 	// _ init
 	if request == "init" {
@@ -24,8 +28,9 @@ func main() {
 	if request == "signup_user" {
 		if len(os.Args) < 8 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 8)
+			return
 		}
-		jwt := auth_service.SignUp(
+		jwt, err := auth_service.SignUp(
 			&db,
 			&h.User{
 				Name:        os.Args[2],
@@ -38,6 +43,10 @@ func main() {
 				},
 			},
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		fmt.Println(jwt)
 		return
 	}
@@ -46,14 +55,19 @@ func main() {
 	if request == "signin_user" {
 		if len(os.Args) < 4 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 4)
+			return
 		}
-		jwt := auth_service.SignIn(
+		jwt, err := auth_service.SignIn(
 			&db,
 			&h.User{
 				Email:    os.Args[2],
 				Password: os.Args[3],
 			},
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		fmt.Println(jwt)
 		return
 	}
@@ -62,8 +76,9 @@ func main() {
 	if request == "assign_broker" {
 		if len(os.Args) < 4 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 4)
+			return
 		}
-		auth_service.AssignBroker(
+		err := auth_service.AssignBroker(
 			&db,
 			&h.User{
 				Email: os.Args[2],
@@ -72,6 +87,10 @@ func main() {
 				},
 			},
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		return
 	}
 
@@ -79,8 +98,9 @@ func main() {
 	if request == "signup_company" {
 		if len(os.Args) < 7 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 7)
+			return
 		}
-		jwt := auth_service.SignUpCompany(
+		jwt, err := auth_service.SignUpCompany(
 			&db,
 			&h.Company{
 				Tag:         os.Args[2],
@@ -90,6 +110,10 @@ func main() {
 				Password:    os.Args[6],
 			},
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		fmt.Println(jwt)
 		return
 	}
@@ -98,14 +122,19 @@ func main() {
 	if request == "signin_company" {
 		if len(os.Args) < 4 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 4)
+			return
 		}
-		jwt := auth_service.SignInCompany(
+		jwt, err := auth_service.SignInCompany(
 			&db,
 			&h.Company{
 				Tag:      os.Args[2],
 				Password: os.Args[3],
 			},
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		fmt.Println(jwt)
 		return
 	}
@@ -114,9 +143,14 @@ func main() {
 	if request == "add_commodity" {
 		if len(os.Args) < 6 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 6)
+			return
 		}
-		volume, _ := strconv.ParseFloat(os.Args[4], 64)
-		ex_service.AddCommodity(
+		volume, err := strconv.ParseFloat(os.Args[4], 64)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+		err = ex_service.AddCommodity(
 			&db,
 			&h.Commodity{
 				Label:  os.Args[3],
@@ -127,6 +161,10 @@ func main() {
 			},
 			os.Args[5],
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		return
 	}
 
@@ -134,18 +172,27 @@ func main() {
 	if request == "check_commodity" {
 		if len(os.Args) < 2 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 2)
+			return
 		}
-		commodities := ex_service.CheckCommodities(
+		commodities, err := ex_service.CheckCommodities(
 			&db,
 			os.Args[2],
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		h.PrintCommodities(commodities)
 		return
 	}
 
 	// _ list_commodities
 	if request == "list_commodities" {
-		commodities := db.GetAvailableCommodities()
+		commodities, err := db.GetAvailableCommodities()
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		h.PrintCommoditiesList(commodities)
 		return
 	}
@@ -154,9 +201,14 @@ func main() {
 	if request == "add_order" {
 		if len(os.Args) < 7 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 7)
+			return
 		}
-		volume, _ := strconv.ParseFloat(os.Args[4], 64)
-		ex_service.AddOrder(
+		volume, err := strconv.ParseFloat(os.Args[4], 64)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+		err = ex_service.AddOrder(
 			&db,
 			&h.Order{
 				Side: os.Args[2],
@@ -170,6 +222,10 @@ func main() {
 			},
 			os.Args[6],
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		return
 	}
 
@@ -177,11 +233,16 @@ func main() {
 	if request == "list_orders_my" {
 		if len(os.Args) < 3 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 3)
+			return
 		}
-		orders := ex_service.ReadUserOrders(
+		orders, err := ex_service.ReadUserOrders(
 			&db,
 			os.Args[2],
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		h.PrintPersonalOrders(orders)
 		return
 	}
@@ -190,11 +251,16 @@ func main() {
 	if request == "list_orders_all" {
 		if len(os.Args) < 3 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 3)
+			return
 		}
-		orders := ex_service.ReadAllOrders(
+		orders, err := ex_service.ReadAllOrders(
 			&db,
 			os.Args[2],
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		h.PrintNativeOrders(orders)
 		return
 	}
@@ -203,13 +269,22 @@ func main() {
 	if request == "cancel_order" {
 		if len(os.Args) < 4 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 4)
+			return
 		}
-		orderId, _ := strconv.Atoi(os.Args[2])
-		ex_service.CancelOrder(
+		orderId, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+		err = ex_service.CancelOrder(
 			&db,
 			orderId,
 			os.Args[3],
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		return
 	}
 
@@ -217,22 +292,35 @@ func main() {
 	if request == "execute_order" {
 		if len(os.Args) < 6 {
 			fmt.Printf("⛔️ Not enough arguments for %s. Should be %d\n", request, 6)
+			return
 		}
-		firstOrderId, _ := strconv.Atoi(os.Args[2])
-		secondOrderId, _ := strconv.Atoi(os.Args[3])
-		volume, _ := strconv.ParseFloat(os.Args[4], 32)
-		ex_service.ExecuteOrder(
+		firstOrderId, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+		secondOrderId, err := strconv.Atoi(os.Args[3])
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+		volume, err := strconv.ParseFloat(os.Args[4], 32)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+		err = ex_service.ExecuteOrder(
 			&db,
 			firstOrderId,
 			secondOrderId,
 			volume,
 			os.Args[5],
 		)
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
 		return
-	}
-
-	if request == "test" {
-		fmt.Println("🛠 " + os.Args[2])
 	}
 
 	fmt.Println("⛔️ Unknown command")

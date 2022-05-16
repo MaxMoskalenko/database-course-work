@@ -9,158 +9,180 @@ import (
 func SignUp(
 	db *sql_service.Database,
 	user *h.User,
-) string {
+) (string, error) {
 	if !h.ValidPassword(user.Password) {
-		fmt.Printf("⛔️ Your password is incorrect\n")
-		return ""
+		return "", fmt.Errorf("your password is incorrect")
 	}
 
 	if !h.ValidEmail(user.Email) {
-		fmt.Printf("⛔️ Your email is incorrect\n")
-		return ""
+		return "", fmt.Errorf("your email is incorrect")
 	}
 
 	if !h.ValidBankAccount(user.BankAccount) {
-		fmt.Printf("⛔️ Your email is incorrect\n")
-		return ""
+		return "", fmt.Errorf("your email is incorrect")
 	}
 
 	if db.CheckIsRecordExist("users", "email", user.Email) {
-		fmt.Printf("⛔️ Your email is already in use\n")
-		return ""
+		return "", fmt.Errorf("your email is already in use")
 	}
 
 	user.Password = h.Hash(user.Password)
 
-	db.SignUp(user)
+	err := db.SignUp(user)
 
+	if err != nil {
+		return "", err
+	}
+
+	var noBrokerError error
 	if len(user.License.Code) != 0 {
-		AssignBroker(db, user)
+		noBrokerError = AssignBroker(db, user)
 	}
 
 	jwt, err := generateJWT(user)
 
 	if err != nil {
-		fmt.Println(err.Error())
-		return ""
+		return "", err
 	}
 
-	return jwt
+	return jwt, noBrokerError
 }
 
 func AssignBroker(
 	db *sql_service.Database,
 	user *h.User,
-) {
+) error {
 	if !db.CheckIsRecordExist("licenses", "license_code", user.License.Code) {
-		panic(fmt.Errorf("⛔️ Invalid license code"))
+		return fmt.Errorf("invalid license code")
 	}
 
-	user.Id = db.GetId("users", "email", user.Email)
-	license := db.GetLicense(user.License.Code)
+	var err error
+
+	user.Id, err = db.GetId("users", "email", user.Email)
+	if err != nil {
+		return err
+	}
+
+	license, err := db.GetLicense(user.License.Code)
+	if err != nil {
+		return err
+	}
 
 	if license.IsTaken {
-		panic(fmt.Errorf("⛔️ This license code is taken"))
+		return fmt.Errorf("this license code is taken")
 	}
 
-	db.AssignBroker(user.Id, license.Id)
+	err = db.AssignBroker(user.Id, license.Id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func SignUpCompany(
 	db *sql_service.Database,
 	company *h.Company,
-) string {
+) (string, error) {
 	if !h.ValidPassword(company.Password) {
-		fmt.Printf("⛔️ Your password is incorrect\n")
-		return ""
+		return "", fmt.Errorf("your password is incorrect")
 	}
 
 	if db.CheckIsRecordExist("companies", "tag", company.Tag) {
-		fmt.Printf("⛔️ This tag is already in use\n")
-		return ""
+		return "", fmt.Errorf("this tag is already in use")
 	}
 
 	if len(company.Email) != 0 && !h.ValidEmail(company.Email) {
-		panic(fmt.Errorf("⛔️ Company email is invalid"))
+		return "", fmt.Errorf("company email is invalid")
 	}
 
 	if len(company.PhoneNumber) != 0 && !h.ValidPhone(company.PhoneNumber) {
-		panic(fmt.Errorf("⛔️ Company phone number is invalid"))
+		return "", fmt.Errorf("company phone number is invalid")
 	}
 
 	company.Password = h.Hash(company.Password)
 
-	db.SignUpCompany(company)
+	err := db.SignUpCompany(company)
+
+	if err != nil {
+		return "", err
+	}
 
 	jwt, err := generateCompanyJWT(company)
 
 	if err != nil {
-		fmt.Println(err.Error())
-		return ""
+		return "", err
 	}
 
-	return jwt
+	return jwt, nil
 }
 
 func SignIn(
 	db *sql_service.Database,
 	login *h.User,
-) string {
+) (string, error) {
 	login.Password = h.Hash(login.Password)
 
-	user := db.GetUserOnLogin(login)
+	user, err := db.GetUserOnLogin(login)
+
+	if err != nil {
+		return "", err
+	}
 
 	if user.Email == "" {
-		fmt.Printf("⛔️ Wrong credentials\n")
-		return ""
+		return "", fmt.Errorf("wrong credentials")
 	}
 
 	jwt, err := generateJWT(user)
 
 	if err != nil {
-		fmt.Println(err.Error())
-		return ""
+		return "", err
 	}
 
-	return jwt
+	return jwt, nil
 }
 
 func SignInCompany(
 	db *sql_service.Database,
 	login *h.Company,
-) string {
+) (string, error) {
 	login.Password = h.Hash(login.Password)
 
-	company := db.GetCompanyOnLogin(login)
+	company, err := db.GetCompanyOnLogin(login)
+
+	if err != nil {
+		return "", err
+	}
 
 	if company.Tag == "" {
-		fmt.Printf("⛔️ Wrong credentials\n")
-		return ""
+		return "", fmt.Errorf("wrong credentials")
 	}
 
 	jwt, err := generateCompanyJWT(company)
 
 	if err != nil {
-		fmt.Println(err.Error())
-		return ""
+		return "", err
 	}
 
-	return jwt
+	return jwt, nil
 }
 
 func GetUser(
 	db *sql_service.Database,
 	jwt string,
-) *h.User {
+) (*h.User, error) {
 	user, err := ReadJWT(jwt)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	userData := db.GetUserData(user.Email)
+	userData, err := db.GetUserData(user.Email)
+	if err != nil {
+		return nil, err
+	}
 
 	if userData == nil {
-		panic(fmt.Errorf("⛔️ User does not exist"))
+		return nil, fmt.Errorf("user does not exist")
 	}
 
 	user.Id = userData.Id
@@ -168,5 +190,5 @@ func GetUser(
 	user.Surname = userData.Surname
 	user.IsBroker = userData.IsBroker
 
-	return user
+	return user, nil
 }

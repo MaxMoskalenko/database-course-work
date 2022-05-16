@@ -8,9 +8,9 @@ import (
 func updateTransactionOrder(
 	tx *sql.Tx,
 	order *h.Order,
-) {
+) error {
 	sqlStatement := `
-		UPDATE orders
+		UPDATE commodity_market.orders
 		SET volume = ?, state = ?, executed_volume = ?
 		WHERE id = ?;
 	`
@@ -25,8 +25,10 @@ func updateTransactionOrder(
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func upsertTransactionCommodities(
@@ -35,10 +37,10 @@ func upsertTransactionCommodities(
 	commodityId int,
 	volume float64,
 	source *h.CommoditySource,
-) {
+) error {
 	sqlStatement := `
 		INSERT INTO
-			commodities_account (owner_id, commodity_id, volume, source)
+			commodity_market.commodities_account (owner_id, commodity_id, volume, source)
 		VALUES (?, ?, ?, 'trade');
 	`
 
@@ -51,19 +53,19 @@ func upsertTransactionCommodities(
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
 
 	sqlStatement = `
 		INSERT INTO 
-			source_commodities_trade (transaction_id, source_user_id, source_order_id, dest_order_id, broker_id)
+			commodity_market.source_commodities_trade (transaction_id, source_user_id, source_order_id, dest_order_id, broker_id)
 		VALUES (?, ?, ?, ?, ?)
 	`
 
@@ -78,6 +80,7 @@ func upsertTransactionCommodities(
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
+	return nil
 }

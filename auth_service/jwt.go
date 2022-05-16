@@ -23,7 +23,7 @@ func generateJWT(user *h.User) (string, error) {
 	tokenString, err := token.SignedString(mySigningKey)
 
 	if err != nil {
-		return "", fmt.Errorf("⛔️ Something Went Wrong: %s", err.Error())
+		return "", fmt.Errorf("something Went Wrong: %s", err.Error())
 	}
 	return tokenString, nil
 }
@@ -41,7 +41,7 @@ func generateCompanyJWT(company *h.Company) (string, error) {
 	tokenString, err := token.SignedString(mySigningKey)
 
 	if err != nil {
-		return "", fmt.Errorf("⛔️ Something Went Wrong: %s", err.Error())
+		return "", fmt.Errorf("something Went Wrong: %s", err.Error())
 	}
 	return tokenString, nil
 }
@@ -51,13 +51,13 @@ func ReadJWT(unparsedToken string) (*h.User, error) {
 	var mySigningKey = []byte(os.Getenv("SIGN_KEY"))
 	token, err := jwt.Parse(unparsedToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("⛔️ There was an error in parsing")
+			return nil, fmt.Errorf("there was an error in parsing")
 		}
 		return mySigningKey, nil
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("⛔️ %s", err.Error())
+		return nil, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -65,7 +65,7 @@ func ReadJWT(unparsedToken string) (*h.User, error) {
 		user.Email = fmt.Sprintf("%v", claims["email"])
 		return &user, nil
 	}
-	return nil, fmt.Errorf("⛔️ Something went wrong during token read")
+	return nil, fmt.Errorf("something went wrong during token read")
 }
 
 func ReadCompanyJWT(unparsedToken string) (*h.Company, error) {
@@ -73,13 +73,13 @@ func ReadCompanyJWT(unparsedToken string) (*h.Company, error) {
 	var mySigningKey = []byte(os.Getenv("SIGN_KEY"))
 	token, err := jwt.Parse(unparsedToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("⛔️ There was an error in parsing")
+			return nil, fmt.Errorf("there was an error in parsing")
 		}
 		return mySigningKey, nil
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("⛔️ %s", err.Error())
+		return nil, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -87,5 +87,5 @@ func ReadCompanyJWT(unparsedToken string) (*h.Company, error) {
 		company.Tag = fmt.Sprintf("%v", claims["tag"])
 		return &company, nil
 	}
-	return nil, fmt.Errorf("⛔️ Something went wrong during token read")
+	return nil, fmt.Errorf("something went wrong during token read")
 }

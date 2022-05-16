@@ -14,10 +14,13 @@ build:
 init-db:
 	@./main init
 
+test: build
+	./main signup_user Cataleya Heaton cheaton11@mail.com 6666777788889999 password3 "2828-8282"
+
 create-users:
-	@./main signup_user Ziggy Wilks zwilks@mail.com 1111111111111111 password1 ""
-	@./main signup_user Hawa Brookes hbrookes@mail.com 2222333344445555 password2 ""
-	@./main signup_user Cataleya Heaton cheaton@mail.com 6666777788889999 password3 ""
+	./main signup_user Ziggy Wilks zwilks@mail.com 1111111111111111 password1 ""
+	./main signup_user Hawa Brookes hbrookes@mail.com 2222333344445555 password2 ""
+	./main signup_user Cataleya Heaton cheaton@mail.com 6666777788889999 password3 ""
 
 assign-broker-license:
 	@./main assign_broker cheaton@mail.com 1919-9191
@@ -55,7 +58,7 @@ cancel-order:
 	@./main cancel_order 2 $(shell ./main signin_user zwilks@mail.com password1)
 
 execute-order:
-	@./main execute_order 3 4 4 $(shell ./main signin_user cheaton@mail.com password3)
+	@./main execute_order 2 4 1 $(shell ./main signin_user cheaton@mail.com password3)
 
 init: init-db
 

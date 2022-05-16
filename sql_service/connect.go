@@ -15,10 +15,10 @@ type Database struct {
 	sql *sql.DB
 }
 
-func Connect() Database {
+func Connect() (Database, error) {
 	err := godotenv.Load()
 	if err != nil {
-		panic(err)
+		return Database{}, err
 	}
 
 	USER := os.Getenv("MYSQL_DB_USER")
@@ -30,12 +30,12 @@ func Connect() Database {
 	db, err := sql.Open("mysql", dsn)
 
 	if err != nil {
-		panic(err.Error())
+		return Database{}, err
 	}
 
 	db.Exec("CREATE DATABASE IF NOT EXISTS commodity_market;")
 
 	db.Exec("USE commodity_market;")
 
-	return Database{db}
+	return Database{db}, nil
 }

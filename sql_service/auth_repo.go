@@ -4,13 +4,13 @@ import (
 	h "database-course-work/helpers"
 )
 
-func (db *Database) SignUp(user *h.User) {
+func (db *Database) SignUp(user *h.User) error {
 	sqlStatement := `
-		INSERT INTO users (name, surname, email, bank_account, password) 
+		INSERT INTO commodity_market.users (name, surname, email, bank_account, password) 
 		VALUES (?, ?, ?, ?, ?); 
 	`
 
-	err := db.sql.QueryRow(
+	return db.sql.QueryRow(
 		sqlStatement,
 		user.Name,
 		user.Surname,
@@ -18,22 +18,18 @@ func (db *Database) SignUp(user *h.User) {
 		user.BankAccount,
 		user.Password,
 	).Err()
-
-	if err != nil {
-		panic(err)
-	}
 }
 
-func (db *Database) AssignBroker(userId int, licenseId int) {
+func (db *Database) AssignBroker(userId int, licenseId int) error {
 	tx, err := db.sql.Begin()
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
 
 	sqlStatement := `
-		INSERT INTO brokers (user_id, license_id)
+		INSERT INTO commodity_market.brokers (user_id, license_id)
 		VALUES (?, ?);
 	`
 
@@ -45,11 +41,11 @@ func (db *Database) AssignBroker(userId int, licenseId int) {
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
 
 	sqlStatement = `
-		UPDATE licenses
+		UPDATE commodity_market.licenses
 		SET is_taken=true
 		WHERE id=?;
 	`
@@ -61,11 +57,11 @@ func (db *Database) AssignBroker(userId int, licenseId int) {
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
 
 	sqlStatement = `
-		UPDATE users
+		UPDATE commodity_market.users
 		SET is_broker=true
 		WHERE id=?
 	`
@@ -77,24 +73,19 @@ func (db *Database) AssignBroker(userId int, licenseId int) {
 
 	if err != nil {
 		tx.Rollback()
-		panic(err)
+		return err
 	}
 
-	err = tx.Commit()
-
-	if err != nil {
-		panic(err)
-	}
-
+	return tx.Commit()
 }
 
-func (db *Database) SignUpCompany(company *h.Company) {
+func (db *Database) SignUpCompany(company *h.Company) error {
 	sqlStatement := `
-		INSERT INTO companies (title, tag, password, email, phone_number) 
+		INSERT INTO commodity_market.companies (title, tag, password, email, phone_number) 
 		VALUES (?, ?, ?, ?, ?); 
 	`
 
-	err := db.sql.QueryRow(
+	return db.sql.QueryRow(
 		sqlStatement,
 		company.Title,
 		company.Tag,
@@ -102,61 +93,69 @@ func (db *Database) SignUpCompany(company *h.Company) {
 		company.Email,
 		company.PhoneNumber,
 	).Err()
-
-	if err != nil {
-		panic(err)
-	}
 }
 
-func (db *Database) GetUserOnLogin(login *h.User) *h.User {
+func (db *Database) GetUserOnLogin(login *h.User) (*h.User, error) {
 	var user h.User
 
 	sqlStatement := `
 		SELECT email 
-		FROM users 
+		FROM commodity_market.users 
 		WHERE email=? AND password=?;
 	`
 
-	db.sql.QueryRow(
+	err := db.sql.QueryRow(
 		sqlStatement,
 		login.Email,
 		login.Password,
 	).Scan(&user.Email)
 
-	return &user
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
-func (db *Database) GetCompanyOnLogin(login *h.Company) *h.Company {
+func (db *Database) GetCompanyOnLogin(login *h.Company) (*h.Company, error) {
 	var company h.Company
 
 	sqlStatement := `
 		SELECT tag 
-		FROM companies 
+		FROM commodity_market.companies 
 		WHERE tag=? AND password=?;
 	`
 
-	db.sql.QueryRow(
+	err := db.sql.QueryRow(
 		sqlStatement,
 		login.Tag,
 		login.Password,
 	).Scan(&company.Tag)
 
-	return &company
+	if err != nil {
+		return nil, err
+	}
+
+	return &company, nil
 }
 
-func (db *Database) GetUserData(email string) *h.User {
+func (db *Database) GetUserData(email string) (*h.User, error) {
 	var user h.User
 
 	sqlStatement := `
 		SELECT id, email, name, surname, is_broker
-		FROM users
+		FROM commodity_market.users
 		WHERE email=?;
 	`
 
-	db.sql.QueryRow(
+	err := db.sql.QueryRow(
 		sqlStatement,
 		email,
 	).Scan(&user.Id, &user.Email, &user.Name, &user.Surname, &user.IsBroker)
 
-	return &user
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
