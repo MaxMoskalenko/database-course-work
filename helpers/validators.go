@@ -25,6 +25,13 @@ func ValidEmail(email string) bool {
 	return matched
 }
 
+func ValidPhone(phone string) bool {
+	phoneRegExp := "^\\+[0-9]{1,4} \\([0-9]{3}\\) [0-9]{3}-[0-9]{4}$"
+	matched, _ := regexp.MatchString(phoneRegExp, phone)
+
+	return matched
+}
+
 func ValidDatabase(exchangerName string) bool {
 	databaseRegExp := "^[a-z_]{1,127}$"
 	matched, _ := regexp.MatchString(databaseRegExp, exchangerName)

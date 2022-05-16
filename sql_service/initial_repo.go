@@ -42,7 +42,7 @@ func (db *Database) InitDatabase() {
 		CREATE TABLE IF NOT EXISTS licenses (
 			id INT PRIMARY KEY AUTO_INCREMENT,
 			license_code VARCHAR(255) NOT NULL,
-			is_taken BOOLEAN DEFAULT false
+			is_taken BOOLEAN DEFAULT FALSE
 		);
 	`)
 
@@ -54,7 +54,7 @@ func (db *Database) InitDatabase() {
 			email VARCHAR (255) NOT NULL,
 			bank_account VARCHAR (255) NOT NULL,
 			password VARCHAR (255) NOT NULL,
-			is_broker BOOLEAN NOT NULL,
+			is_broker BOOLEAN DEFAULT FALSE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE (email)
 		);
@@ -89,7 +89,8 @@ func (db *Database) InitDatabase() {
 		CREATE TABLE IF NOT EXISTS source_commodities_trade (
 			transaction_id INT NOT NULL PRIMARY KEY,
 			source_user_id INT NOT NULL,
-			source_order_id INT NOT NULL
+			source_order_id INT NOT NULL,
+			source_broker_id INT NOT NULL
 		);
 	`)
 
@@ -119,7 +120,8 @@ func (db *Database) InitDatabase() {
 		ALTER TABLE source_commodities_trade
 		ADD FOREIGN KEY (transaction_id) REFERENCES commodities_account(id),
 		ADD FOREIGN KEY (source_user_id) REFERENCES users(id),
-		ADD FOREIGN KEY (source_order_id) REFERENCES orders(id);
+		ADD FOREIGN KEY (source_order_id) REFERENCES orders(id),
+		ADD FOREIGN KEY (source_broker_id) REFERENCES users(id)
 	`)
 
 	db.sql.Exec(`

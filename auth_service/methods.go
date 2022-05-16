@@ -52,7 +52,6 @@ func AssignBroker(
 	db *sql_service.Database,
 	user *h.User,
 ) {
-
 	if !db.CheckIsRecordExist("licenses", "license_code", user.License.Code) {
 		panic(fmt.Errorf("⛔️ Invalid license code"))
 	}
@@ -79,6 +78,14 @@ func SignUpCompany(
 	if db.CheckIsRecordExist("companies", "tag", company.Tag) {
 		fmt.Printf("⛔️ This tag is already in use\n")
 		return ""
+	}
+
+	if len(company.Email) != 0 && !h.ValidEmail(company.Email) {
+		panic(fmt.Errorf("⛔️ Company email is invalid"))
+	}
+
+	if len(company.PhoneNumber) != 0 && !h.ValidPhone(company.PhoneNumber) {
+		panic(fmt.Errorf("⛔️ Company phone number is invalid"))
 	}
 
 	company.Password = h.Hash(company.Password)

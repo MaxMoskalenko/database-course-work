@@ -6,28 +6,85 @@ import (
 	"fmt"
 )
 
-//TODO commodity functionality
-func (db *Database) AddCommodity(userEmail string, commodity *h.Commodity) {
-	// userId := db.GetId("users", "email", userEmail)
-	// commodityId := db.GetId("commodity_types", "label", commodity.Label)
+func (db *Database) AddCommodity(commodity *h.Commodity) {
+	tx, err := db.sql.Begin()
 
-	// sqlStatement := fmt.Sprintf(`
-	// 	INSERT INTO %s.commodities (user_id, commodity_id, volume)
-	// 	VALUES (?, ?, ?)
-	// 	ON DUPLICATE KEY UPDATE volume = volume + ?;
-	// `, database)
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
 
-	// err := db.sql.QueryRow(
-	// 	sqlStatement,
-	// 	userId,
-	// 	commodityId,
-	// 	commodity.Volume,
-	// 	commodity.Volume,
-	// ).Err()
+	sqlStatement := `
+		INSERT INTO commodities_account (owner_user_id, commodity_id, volume, source)
+		VALUES (?, ?, ?, ?);
+	`
 
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
+	res, err := tx.Exec(
+		sqlStatement,
+		commodity.Owner.Id,
+		commodity.Id,
+		commodity.Volume,
+		commodity.Source.Type,
+	)
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	lastId, err := res.LastInsertId()
+
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	}
+
+	if commodity.Source.Type == "company" {
+		sqlStatement = `
+			INSERT INTO source_commodities_company (transaction_id, source_company_id)
+			VALUES (?, ?);
+		`
+
+		err = tx.QueryRow(
+			sqlStatement,
+			lastId,
+			commodity.Source.CompanyId,
+		).Err()
+
+		if err != nil {
+			tx.Rollback()
+			panic(err)
+		}
+	} else if commodity.Source.Type == "trade" {
+		sqlStatement = `
+			INSERT INTO source_commodities_trade 
+				(transaction_id, source_owner_id, source_order_id, source_broker_id)
+			VALUES (?, ?, ?, ?);
+		`
+
+		err = tx.QueryRow(
+			sqlStatement,
+			lastId,
+			commodity.Source.UserId,
+			commodity.Source.OrderId,
+			commodity.Source.BrokerId,
+		).Err()
+
+		if err != nil {
+			tx.Rollback()
+			panic(err)
+		}
+	} else {
+		tx.Rollback()
+		panic(fmt.Errorf("⛔️ Invalid source type"))
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 func (db *Database) GetUserCommodities(userEmail string) [](*h.Commodity) {

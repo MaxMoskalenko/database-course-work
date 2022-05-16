@@ -102,12 +102,12 @@ func main() {
 		volume, _ := strconv.ParseFloat(os.Args[4], 64)
 		ex_service.AddCommodity(
 			&db,
-			&h.User{
-				Email: os.Args[2],
-			},
 			&h.Commodity{
 				Label:  os.Args[3],
 				Volume: volume,
+				Owner: &h.User{
+					Email: os.Args[2],
+				},
 			},
 			os.Args[5],
 		)

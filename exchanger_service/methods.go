@@ -9,7 +9,6 @@ import (
 
 func AddCommodity(
 	db *sql_service.Database,
-	user *h.User,
 	commodity *h.Commodity,
 	companyJWT string,
 ) {
@@ -30,12 +29,24 @@ func AddCommodity(
 		return
 	}
 
-	if !db.CheckIsRecordExist("users", "email", user.Email) {
-		fmt.Printf("⛔️ No such user %s \n", user.Email)
+	if !db.CheckIsRecordExist("users", "email", commodity.Owner.Email) {
+		fmt.Printf("⛔️ No such user %s \n", commodity.Owner.Email)
 		return
 	}
 
-	db.AddCommodity(user.Email, commodity)
+	if commodity.Volume <= 0 {
+		panic(fmt.Errorf("⛔️ Company cannot take commodities from user"))
+	}
+
+	commodity.Source = &h.CommoditySource{
+		Type:      "company",
+		CompanyId: db.GetId("companies", "tag", company.Tag),
+	}
+
+	commodity.Owner.Id = db.GetId("users", "email", commodity.Owner.Email)
+	commodity.Id = db.GetId("commodity_types", "label", commodity.Label)
+
+	db.AddCommodity(commodity)
 
 }
 

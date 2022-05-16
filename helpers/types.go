@@ -41,6 +41,15 @@ type Commodity struct {
 	Unit   string
 	Id     int
 	Owner  *User
+	Source *CommoditySource
+}
+
+type CommoditySource struct {
+	Type      string
+	CompanyId int
+	UserId    int
+	OrderId   int
+	BrokerId  int
 }
 
 type Order struct {

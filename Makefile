@@ -21,32 +21,21 @@ build:
 init-db:
 	./main init
 
-init-exchangers-db:
-	./main init_exchange lviv_central_ex "Lviv Commodity Exchange" LCE
-	./main init_exchange kyiv_central_ex "Kyiv Commodity Exchange" KCE
-
-
 create-users:
-	./main signup_user KCE Goddamn Khmelnytskyi gkh@mail.ua topgetman123 false
-	./main signup_user KCE Ostap Cherry ocherry@mail.ua jokewriter4 false
-	./main signup_broker KCE Stephan Bender sbender@mail.ua vashbatk0 true "01234-itsli-cense-56789"
-	./main signup_user LCE Andrew Sheptytskiy ashept@mail.ua iNg0dwetrust false
-	./main signup_broker LCE Mykhailo Grushevskiy mgrusha@mail.ua 50hryvnas true "01234-lvivl-cense-56789"
+	./main signup_user Ziggy Wilks zwilks@mail.com 1111111111111111 password1 ""
+	./main signup_user Hawa Brookes hbrookes@mail.com 2222333344445555 password2 ""
+	./main signup_user Cataleya Heaton cheaton@mail.com 6666777788889999 password3 1919-9191
+
+assign-broker-license:
+	./main assign_broker cheaton@mail.com 1919-9191
 
 create-company:
-	./main signup_company PER "Paprika Journal" paprikaa
-	./main signup_company GET "TOV Getmanchyna" topgetman
-
-create-shipment-company:
-	./main signup_shipcompany NNP "Nova Nova Poshta" newnewnew
+	./main signup_company PM "Prime Metal" hello@pm.com "+38 (066) 123-4567" password
 
 add-commodity:
-	./main add_commodity KCE sbender@mail.ua iron 200 $(shell ./main signin_company PER paprikaa)
-	./main add_commodity LCE mgrusha@mail.ua silver 2 $(shell ./main signin_company PER paprikaa)
-	./main add_commodity LCE ashept@mail.ua cooper 0.8 $(shell ./main signin_company PER paprikaa)
-	./main add_commodity LCE ashept@mail.ua wheat 13.2 $(shell ./main signin_company PER paprikaa)
-	./main add_commodity LCE mgrusha@mail.ua iron 20 $(shell ./main signin_company PER paprikaa)
-	./main add_commodity LCE ashept@mail.ua corn 45 $(shell ./main signin_company PER paprikaa)
+	./main add_commodity zwilks@mail.com iron 200 $(shell ./main signin_company PM password)
+	./main add_commodity cheaton@mail.com silver 2.5 $(shell ./main signin_company PM password)
+	./main add_commodity cheaton@mail.com silver 2.5 $(shell ./main signin_company PM password)
 
 check-commodity:
 	./main check_commodity ${JWT_USER_TOKEN}
