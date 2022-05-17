@@ -2,6 +2,7 @@ package main
 
 import (
 	"database-course-work/auth_service"
+	"database-course-work/cli_service"
 	ex_service "database-course-work/exchanger_service"
 	h "database-course-work/helpers"
 	"database-course-work/sql_service"
@@ -320,6 +321,11 @@ func main() {
 			fmt.Printf("⛔️ %s\n", err.Error())
 			return
 		}
+		return
+	}
+
+	if request == "cli" {
+		cli_service.Launch(&db)
 		return
 	}
 

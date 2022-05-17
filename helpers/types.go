@@ -1,7 +1,5 @@
 package helpers
 
-import "time"
-
 type User struct {
 	Id          int
 	Name        string
@@ -64,13 +62,9 @@ type Order struct {
 	Exchnager      *Exchanger
 }
 
-type Race struct {
-	Id          int
-	FromExch    *Exchanger
-	ToExch      *Exchanger
-	DateStamp   time.Time
-	DateValue   string
-	Commodities [](*Commodity)
-	Company     *Company
-	Status      string
+type CliUser struct {
+	Jwt         string
+	SelfUser    *User
+	SelfCompany *Company
+	UserType    string
 }

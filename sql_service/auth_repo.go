@@ -159,3 +159,24 @@ func (db *Database) GetUserData(email string) (*h.User, error) {
 
 	return &user, nil
 }
+
+func (db *Database) GetCompanyData(tag string) (*h.Company, error) {
+	var company h.Company
+
+	sqlStatement := `
+		SELECT id, title
+		FROM commodity_market.companies
+		WHERE tag=?;
+	`
+
+	err := db.sql.QueryRow(
+		sqlStatement,
+		tag,
+	).Scan(&company.Id, &company.Title)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &company, nil
+}

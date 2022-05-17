@@ -110,7 +110,7 @@ func (db *Database) GetAvailableCommodities() ([](*h.Commodity), error) {
 		FROM commodity_market.commodity_types AS CT
 		INNER JOIN (
 			SELECT unit, id
-			FROM units
+			FROM commodity_market.units
 		) AS CU
 			ON CU.id = CT.unit_id;
 	`

@@ -60,6 +60,9 @@ cancel-order:
 execute-order:
 	@./main execute_order 2 4 1 $(shell ./main signin_user cheaton@mail.com password3)
 
+cli: build 
+	@./main cli
+
 init: init-db
 
 start: build init-db create-users assign-broker-license create-company add-commodity add-order cancel-order

@@ -192,3 +192,27 @@ func GetUser(
 
 	return user, nil
 }
+
+func GetCompany(
+	db *sql_service.Database,
+	jwt string,
+) (*h.Company, error) {
+	company, err := ReadCompanyJWT(jwt)
+	if err != nil {
+		return nil, err
+	}
+
+	companyData, err := db.GetCompanyData(company.Tag)
+	if err != nil {
+		return nil, err
+	}
+
+	if companyData == nil {
+		return nil, fmt.Errorf("user does not exist")
+	}
+
+	company.Id = companyData.Id
+	company.Title = companyData.Title
+
+	return company, nil
+}
