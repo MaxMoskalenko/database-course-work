@@ -111,7 +111,6 @@ func (db *Database) InitDatabase() error {
 	_, err = db.sql.Exec(`
 		CREATE TABLE IF NOT EXISTS source_commodities_trade (
 			transaction_id INT NOT NULL PRIMARY KEY,
-			source_user_id INT NOT NULL,
 			source_order_id INT NOT NULL,
 			dest_order_id INT NOT NULL,
 			broker_id INT NOT NULL
@@ -152,7 +151,6 @@ func (db *Database) InitDatabase() error {
 	_, err = db.sql.Exec(`
 		ALTER TABLE source_commodities_trade
 		ADD FOREIGN KEY (transaction_id) REFERENCES commodities_account(id),
-		ADD FOREIGN KEY (source_user_id) REFERENCES users(id),
 		ADD FOREIGN KEY (source_order_id) REFERENCES orders(id),
 		ADD FOREIGN KEY (dest_order_id) REFERENCES orders(id),
 		ADD FOREIGN KEY (broker_id) REFERENCES users(id)

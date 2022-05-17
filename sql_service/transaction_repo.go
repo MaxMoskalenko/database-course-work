@@ -65,14 +65,13 @@ func upsertTransactionCommodities(
 
 	sqlStatement = `
 		INSERT INTO 
-			commodity_market.source_commodities_trade (transaction_id, source_user_id, source_order_id, dest_order_id, broker_id)
-		VALUES (?, ?, ?, ?, ?)
+			commodity_market.source_commodities_trade (transaction_id, source_order_id, dest_order_id, broker_id)
+		VALUES (?, ?, ?, ?)
 	`
 
 	err = tx.QueryRow(
 		sqlStatement,
 		lastId,
-		source.SourceUserId,
 		source.SourceOrderId,
 		source.DestOrderId,
 		source.BrokerId,
