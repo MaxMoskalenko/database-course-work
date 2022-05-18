@@ -11,8 +11,8 @@ launch-db:
 build:
 	go build main.go
 
-init-db:
-	@./main init
+init: build
+	@./main init ${SUPERUSER_PASSWORD}
 
 test: build
 	./main signup_user Cataleya Heaton cheaton11@mail.com 6666777788889999 password3 "2828-8282"
@@ -63,7 +63,8 @@ execute-order:
 cli: build 
 	@./main cli
 
-init: init-db
+add-license: 
+	@./main add_license "1122-3344" ${SUPERUSER_PASSWORD}
 
 start: build init-db create-users assign-broker-license create-company add-commodity add-order cancel-order
 

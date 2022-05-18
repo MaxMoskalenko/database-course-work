@@ -50,7 +50,8 @@ func (db *Database) InitDatabase() error {
 		CREATE TABLE IF NOT EXISTS licenses (
 			id INT PRIMARY KEY AUTO_INCREMENT,
 			license_code VARCHAR(255) NOT NULL,
-			is_taken BOOLEAN DEFAULT FALSE
+			is_taken BOOLEAN DEFAULT FALSE,
+			UNIQUE(license_code)
 		);
 	`)
 	if err != nil {
@@ -261,6 +262,17 @@ func (db *Database) InitDatabase() error {
 		return err
 	}
 	return nil
+}
+
+func (db *Database) AddLicense(license string) error {
+	sqlStatement := `
+		INSERT IGNORE INTO commodity_market.licenses (license_code) VALUES (?);
+	`
+
+	return db.sql.QueryRow(
+		sqlStatement,
+		license,
+	).Err()
 }
 
 func (db *Database) fillFromFile(table string, path string, sqlStatement string) error {

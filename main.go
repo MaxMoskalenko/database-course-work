@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -19,9 +21,39 @@ func main() {
 		fmt.Printf("⛔️ Something went wrong during connection : %s", err.Error())
 	}
 
-	// _ init
+	// _ init {su_password}
 	if request == "init" {
+		err := godotenv.Load()
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+
+		if os.Args[2] != os.Getenv("SUPERUSER_PASSWORD") {
+			fmt.Println("⛔️ Superuser password is not correct")
+			return
+		}
 		db.InitDatabase()
+		return
+	}
+
+	// _ add_licence ${license_code} ${su_password}
+	if request == "add_license" {
+		err := godotenv.Load()
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+			return
+		}
+
+		if os.Args[3] != os.Getenv("SUPERUSER_PASSWORD") {
+			fmt.Println("⛔️ Superuser password is not correct")
+			return
+		}
+		err = db.AddLicense(os.Args[2])
+
+		if err != nil {
+			fmt.Printf("⛔️ %s\n", err.Error())
+		}
 		return
 	}
 
